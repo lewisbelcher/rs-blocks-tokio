@@ -1,0 +1,19 @@
+[Brightness]
+path_to_current_brightness = "/sys/class/backlight/intel_backlight/brightness"
+path_to_max_brightness = "/sys/class/backlight/intel_backlight/max_brightness"
+
+[Volume]
+
+[Network]
+path_to_rx = "/sys/class/net/wlan0/statistics/rx_bytes"
+path_to_tx = "/sys/class/net/wlan0/statistics/tx_bytes"
+
+[Memory]
+
+[Cpu]
+
+[Battery]
+path_to_charge_full = "/sys/class/power_supply/BAT0/energy_full"
+path_to_charge_now = "/sys/class/power_supply/BAT0/energy_now"
+
+[Time]
