@@ -1,10 +1,10 @@
 use super::{GetMarkup, GetName, IntoSerialized};
-use rs_blocks_macros::GetName;
+use rs_blocks_macros::{GetName, IntoSerialized, PangoMarkup};
 use serde::Deserialize;
 
 // Add a derive macro with customisable defaults for name and period etc. Or separate derives for
 // default name, default period etc?
-#[derive(Debug, Deserialize, GetName)]
+#[derive(Debug, Deserialize, GetName, PangoMarkup, IntoSerialized)]
 pub struct Battery {
 	#[serde(default = "default_period")]
 	period: u64,
@@ -36,14 +36,6 @@ fn default_path_to_charge_full() -> String {
 
 fn default_path_to_status() -> String {
 	"/sys/class/power_supply/BAT0/status".to_string()
-}
-
-impl GetMarkup for Battery {}
-
-impl IntoSerialized for Battery {
-	fn get_full_text(&self) -> Option<String> {
-		Some("Hello!".to_string())
-	}
 }
 
 #[cfg(test)]

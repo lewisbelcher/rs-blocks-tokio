@@ -1,6 +1,8 @@
+use super::{GetMarkup, GetName, IntoSerialized};
+use rs_blocks_macros::{GetName, IntoSerialized, PangoMarkup};
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, GetName, PangoMarkup, IntoSerialized)]
 pub struct Time {
 	#[serde(default = "default_period")]
 	period: u64,

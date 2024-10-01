@@ -1,6 +1,8 @@
+use super::{GetMarkup, GetName, IntoSerialized};
+use rs_blocks_macros::{GetName, NoMarkup,IntoSerialized};
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, NoMarkup, GetName, IntoSerialized)]
 pub struct Cpu {
 	#[serde(default = "default_period")]
 	period: u64,

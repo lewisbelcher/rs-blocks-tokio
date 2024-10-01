@@ -1,8 +1,10 @@
+use super::{GetMarkup, GetName, IntoSerialized};
+use rs_blocks_macros::{GetName, IntoSerialized, NoMarkup};
 use serde::Deserialize;
 
 const PATTERN: &str = r"(?s)MemTotal:\s+(\d+).+MemFree:\s+(\d+)";
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, NoMarkup, GetName, IntoSerialized)]
 pub struct Memory {
 	#[serde(default = "default_period")]
 	period: u64,

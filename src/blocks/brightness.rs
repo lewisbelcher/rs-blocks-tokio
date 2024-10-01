@@ -1,8 +1,8 @@
 use super::{GetMarkup, GetName, IntoSerialized};
-use rs_blocks_macros::GetName;
+use rs_blocks_macros::{GetName, IntoSerialized, NoMarkup};
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize, GetName)]
+#[derive(Debug, Deserialize, NoMarkup, GetName, IntoSerialized)]
 pub struct Brightness {
 	#[serde(default = "default_period")]
 	period: u64,
@@ -28,12 +28,4 @@ fn default_path_to_current_brightness() -> String {
 
 fn default_path_to_max_brightness() -> String {
 	"/sys/class/backlight/intel_backlight/max_brightness".to_string()
-}
-
-impl GetMarkup for Brightness {}
-
-impl IntoSerialized for Brightness {
-	fn get_full_text(&self) -> Option<String> {
-		Some("brightness".into())
-	}
 }

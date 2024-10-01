@@ -1,4 +1,5 @@
 use crate::Error;
+use futures_util::Stream;
 use serde::Serialize;
 use std::future::Future;
 
@@ -13,7 +14,6 @@ pub mod volume;
 
 // TODO: Derive macro or attribute macro for `period` and `alpha`
 
-// TODO: Derive this
 pub trait GetName {
 	fn get_name() -> &'static str;
 }
@@ -36,23 +36,18 @@ pub struct Serialized {
 }
 
 pub trait IntoSerialized: GetName + GetMarkup {
-	fn get_full_text(&self) -> Option<String>;
-
-	fn into_serialized(&self) -> Serialized {
-		Serialized {
+	fn into_serialized(&self, full_text: impl Into<Option<String>>) -> Result<String, Error> {
+		let serialized = Serialized {
 			name: Self::get_name(),
-			full_text: self.get_full_text(),
+			full_text: full_text.into(),
 			markup: Self::get_markup(),
-		}
-	}
-
-	fn into_json(&self) -> Result<String, Error> {
-		serde_json::to_string(&self.into_serialized()).map_err(Error::Serialize)
+		};
+		serde_json::to_string(&serialized).map_err(Error::Serialize)
 	}
 }
 
-pub trait Updater {
-	fn update(&mut self) -> impl Future<Output = ()> + Send;
+pub trait IntoStream {
+	fn into_stream(&mut self) -> impl Stream<Item = Result<String, Error>>;
 }
 
 #[derive(Debug)]
