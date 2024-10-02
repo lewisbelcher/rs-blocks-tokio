@@ -1,7 +1,9 @@
 use crate::Error;
+use async_stream::stream;
+use futures_util::pin_mut;
 use futures_util::Stream;
+use futures_util::StreamExt;
 use serde::Serialize;
-use std::future::Future;
 
 pub mod battery;
 pub mod brightness;
@@ -9,8 +11,10 @@ pub mod cpu;
 pub mod memory;
 pub mod network;
 pub mod time;
-pub mod utils;
+pub mod util;
 pub mod volume;
+
+pub use memory::Memory;
 
 // TODO: Derive macro or attribute macro for `period` and `alpha`
 
@@ -36,7 +40,7 @@ pub struct Serialized {
 }
 
 pub trait IntoSerialized: GetName + GetMarkup {
-	fn into_serialized(&self, full_text: impl Into<Option<String>>) -> Result<String, Error> {
+	fn into_serialized(full_text: impl Into<Option<String>>) -> Result<String, Error> {
 		let serialized = Serialized {
 			name: Self::get_name(),
 			full_text: full_text.into(),
@@ -47,7 +51,8 @@ pub trait IntoSerialized: GetName + GetMarkup {
 }
 
 pub trait IntoStream {
-	fn into_stream(&mut self) -> impl Stream<Item = Result<String, Error>>;
+	// Should this consume self? If anything, just for semantic reasons?
+	fn into_stream(&self) -> impl Stream<Item = Result<String, Error>>;
 }
 
 #[derive(Debug)]
@@ -59,4 +64,27 @@ pub enum Block {
 	Network(network::Network),
 	Time(time::Time),
 	Volume(volume::Volume),
+}
+
+impl Block {
+	pub fn into_stream(block: Block) -> impl Stream<Item = Result<(String, String), Error>> {
+		match block {
+			// Block::Battery(x) => x.into_stream(),
+			// Block::Brightness(x) => x.into_stream(),
+			// Block::Cpu(x) => x.into_stream(),
+			Block::Memory(x) => {
+				stream! {
+					let block_stream = x.into_stream();
+					pin_mut!(block_stream);
+					while let Some(text) = block_stream.next().await {
+						yield Ok((Memory::get_name().to_string(), Memory::into_serialized(text?)?));
+					}
+				}
+			}
+			// Block::Network(x) => x.into_stream(),
+			// Block::Time(x) => x.into_stream(),
+			// Block::Volume(x) => x.into_stream(),
+			_ => unimplemented!(),
+		}
+	}
 }

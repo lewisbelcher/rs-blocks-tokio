@@ -17,6 +17,8 @@ pub enum Error {
 	Deserialize { name: &'static str, reason: String },
 	#[error(transparent)]
 	Io(#[from] io::Error),
+	#[error("could not pattern match for block '{name}'")]
+	PatternMatch { name: &'static str },
 	#[error(transparent)]
 	Serialize(#[from] serde_json::Error),
 	#[error(transparent)]
