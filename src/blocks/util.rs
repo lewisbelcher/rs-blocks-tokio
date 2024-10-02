@@ -48,6 +48,8 @@ pub fn watch<P>(path: P, millis: u64) -> impl Stream<Item = Result<String, Error
 where
 	P: AsRef<Path> + Copy,
 {
+	// TODO: Implement opening a file and just reading X bytes to prevent the Memory block from
+	// always updating
 	stream! {
 		let mut current = "".to_string();
 		loop {

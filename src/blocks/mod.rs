@@ -1,8 +1,6 @@
 use crate::Error;
 use async_stream::stream;
-use futures_util::pin_mut;
-use futures_util::Stream;
-use futures_util::StreamExt;
+use futures_util::{Stream, StreamExt};
 use serde::Serialize;
 
 pub mod battery;
@@ -14,7 +12,13 @@ pub mod time;
 pub mod util;
 pub mod volume;
 
+pub use battery::Battery;
+pub use brightness::Brightness;
+pub use cpu::Cpu;
 pub use memory::Memory;
+pub use network::Network;
+pub use time::Time;
+pub use volume::Volume;
 
 // TODO: Derive macro or attribute macro for `period` and `alpha`
 
@@ -51,8 +55,7 @@ pub trait IntoSerialized: GetName + GetMarkup {
 }
 
 pub trait IntoStream {
-	// Should this consume self? If anything, just for semantic reasons?
-	fn into_stream(&self) -> impl Stream<Item = Result<String, Error>>;
+	fn into_stream(self) -> impl Stream<Item = Result<String, Error>>;
 }
 
 #[derive(Debug)]
@@ -66,25 +69,39 @@ pub enum Block {
 	Volume(volume::Volume),
 }
 
+macro_rules! streamer {
+	($name:ident, $var:ident) => {
+		stream! {
+			let mut block_stream = Box::pin($var.into_stream());
+			while let Some(text) = block_stream.next().await {
+				yield Ok((<$name>::get_name().to_string(), <$name>::into_serialized(text?)?));
+			}
+		}
+	};
+}
+
 impl Block {
-	pub fn into_stream(block: Block) -> impl Stream<Item = Result<(String, String), Error>> {
-		match block {
+	pub fn into_stream(self) -> std::pin::Pin<Box<dyn Stream<Item = Result<(String, String), Error>>>> {
+		match self {
 			// Block::Battery(x) => x.into_stream(),
 			// Block::Brightness(x) => x.into_stream(),
-			// Block::Cpu(x) => x.into_stream(),
-			Block::Memory(x) => {
-				stream! {
-					let block_stream = x.into_stream();
-					pin_mut!(block_stream);
-					while let Some(text) = block_stream.next().await {
-						yield Ok((Memory::get_name().to_string(), Memory::into_serialized(text?)?));
-					}
-				}
-			}
+			Block::Memory(x) => Box::pin(streamer!(Memory, x)),
 			// Block::Network(x) => x.into_stream(),
-			// Block::Time(x) => x.into_stream(),
+			Block::Time(x) => Box::pin(streamer!(Time, x)),
 			// Block::Volume(x) => x.into_stream(),
 			_ => unimplemented!(),
+		}
+	}
+
+	pub fn get_name(&self) -> &'static str {
+		match self {
+			Block::Battery(_) => Battery::get_name(),
+			Block::Brightness(_) => Brightness::get_name(),
+			Block::Cpu(_) => Cpu::get_name(),
+			Block::Memory(_) => Memory::get_name(),
+			Block::Network(_) => Network::get_name(),
+			Block::Time(_) => Time::get_name(),
+			Block::Volume(_) => Volume::get_name(),
 		}
 	}
 }

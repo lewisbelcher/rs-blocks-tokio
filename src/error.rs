@@ -15,6 +15,8 @@ ARGS:
 pub enum Error {
 	#[error("failed to deserialise {name} block: {reason}")]
 	Deserialize { name: &'static str, reason: String },
+	#[error("no block implemented for '{0}'")]
+	InvalidBlockName(String),
 	#[error(transparent)]
 	Io(#[from] io::Error),
 	#[error("could not pattern match for block '{name}'")]

@@ -64,11 +64,10 @@ fn extract_match(m: Option<regex::Match>, name: &'static str) -> Result<f32, Err
 }
 
 impl IntoStream for Memory {
-	fn into_stream(&self) -> impl Stream<Item = Result<String, Error>> {
+	fn into_stream(self) -> impl Stream<Item = Result<String, Error>> {
 		let re = regex::Regex::new(PATTERN).unwrap();
 		stream! {
-			let watcher = util::watch(&self.meminfo_path, self.period);
-			pin_mut!(watcher);
+			let mut watcher = Box::pin(util::watch(&self.meminfo_path, self.period));
 			let mut ema = util::Ema::new(self.alpha);
 			while let Some(contents) = watcher.next().await {
 				let mem_stats: MemStats = re.captures(&contents?)

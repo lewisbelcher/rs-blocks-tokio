@@ -21,7 +21,7 @@ fn map_block((name, value): (String, Value)) -> Result<Block, Error> {
 		"Network" => map_block_arm!(Network),
 		"Time" => map_block_arm!(Time),
 		"Volume" => map_block_arm!(Volume),
-		_ => panic!("Oh no"),
+		_ => return Err(Error::InvalidBlockName(name)),
 	};
 	Ok(block)
 }
