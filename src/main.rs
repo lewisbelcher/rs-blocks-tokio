@@ -1,14 +1,12 @@
-pub use error::Error;
-
-use blocks::{Block, Memory};
 use futures_util::{stream::SelectAll, StreamExt};
 use std::fs;
-use tokio::select;
 
 pub mod args;
 pub mod blocks;
 pub mod config;
 pub mod error;
+
+pub use error::Error;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), error::Error> {

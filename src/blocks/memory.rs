@@ -2,13 +2,11 @@ use super::{GetMarkup, GetName, IntoSerialized, IntoStream};
 use crate::blocks::util;
 use crate::Error;
 use async_stream::stream;
-use futures_util::{pin_mut, Stream, StreamExt};
+use futures_util::{Stream, StreamExt};
 use rs_blocks_macros::{GetName, IntoSerialized, NoMarkup};
 use serde::Deserialize;
-use std::cell::OnceCell;
 
 const PATTERN: &str = r"(?s)MemTotal:\s+(\d+).+MemFree:\s+(\d+)";
-const CELL: OnceCell<regex::Regex> = OnceCell::new();
 
 #[derive(Debug, Deserialize, NoMarkup, GetName, IntoSerialized)]
 pub struct Memory {

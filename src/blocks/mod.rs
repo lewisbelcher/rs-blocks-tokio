@@ -71,12 +71,12 @@ pub enum Block {
 
 macro_rules! streamer {
 	($name:ident, $var:ident) => {
-		stream! {
+		Box::pin(stream! {
 			let mut block_stream = Box::pin($var.into_stream());
 			while let Some(text) = block_stream.next().await {
 				yield Ok((<$name>::get_name().to_string(), <$name>::into_serialized(text?)?));
 			}
-		}
+		})
 	};
 }
 
@@ -85,9 +85,9 @@ impl Block {
 		match self {
 			// Block::Battery(x) => x.into_stream(),
 			// Block::Brightness(x) => x.into_stream(),
-			Block::Memory(x) => Box::pin(streamer!(Memory, x)),
+			Block::Memory(x) => streamer!(Memory, x),
 			// Block::Network(x) => x.into_stream(),
-			Block::Time(x) => Box::pin(streamer!(Time, x)),
+			Block::Time(x) => streamer!(Time, x),
 			// Block::Volume(x) => x.into_stream(),
 			_ => unimplemented!(),
 		}
