@@ -83,12 +83,9 @@ macro_rules! streamer {
 impl Block {
 	pub fn into_stream(self) -> std::pin::Pin<Box<dyn Stream<Item = Result<(String, String), Error>>>> {
 		match self {
-			// Block::Battery(x) => x.into_stream(),
-			// Block::Brightness(x) => x.into_stream(),
+			Block::Cpu(x) => streamer!(Cpu, x),
 			Block::Memory(x) => streamer!(Memory, x),
-			// Block::Network(x) => x.into_stream(),
 			Block::Time(x) => streamer!(Time, x),
-			// Block::Volume(x) => x.into_stream(),
 			_ => unimplemented!(),
 		}
 	}

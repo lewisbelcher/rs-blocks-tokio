@@ -30,7 +30,6 @@ fn default_meminfo_path() -> String {
 	"/proc/meminfo".to_string()
 }
 
-#[derive(Debug, PartialEq)]
 struct MemStats {
 	total: f32,
 	free: f32,
