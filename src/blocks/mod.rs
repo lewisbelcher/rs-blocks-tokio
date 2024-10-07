@@ -92,6 +92,7 @@ impl Block {
 			Block::Cpu(x) => streamer!(Cpu, x),
 			Block::Memory(x) => streamer!(Memory, x),
 			Block::Time(x) => streamer!(Time, x),
+			Block::Volume(x) => streamer!(Volume, x),
 			_ => unimplemented!(),
 		}
 	}

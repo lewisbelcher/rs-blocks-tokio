@@ -13,13 +13,13 @@ ARGS:
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-	#[error("failed to deserialise {name} block: {reason}")]
+	#[error("failed to deserialise block '{name}': {reason}")]
 	Deserialize { name: &'static str, reason: String },
 	#[error("no block implemented for '{0}'")]
 	InvalidBlockName(String),
 	#[error(transparent)]
 	Io(#[from] io::Error),
-	#[error("failed to parse 'name' as '{ty}'")]
+	#[error("failed to parse '{name}' as '{ty}'")]
 	Parse { name: &'static str, ty: &'static str },
 	#[error("could not pattern match for block '{name}'")]
 	PatternMatch { name: &'static str },

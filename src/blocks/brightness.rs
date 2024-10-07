@@ -1,4 +1,4 @@
-use super::{default_period, prelude::*};
+use super::prelude::*;
 use crate::Error;
 use async_stream::stream;
 use futures_util::{Stream, StreamExt};
@@ -18,6 +18,10 @@ pub struct Brightness {
 	max_brightness: u32,
 }
 
+fn default_period() -> u64 {
+	2000
+}
+
 fn default_update_signal() -> i32 {
 	signal_hook::consts::SIGUSR1
 }
@@ -32,8 +36,8 @@ fn default_max_brightness() -> u32 {
 
 impl IntoStream for Brightness {
 	fn into_stream(self) -> impl Stream<Item = Result<String, Error>> {
-		let mut signals =
-			Signals::new(&[self.update_signal]).expect("failed to initialise signal hook");
+		let mut signals = Signals::new(&[self.update_signal])
+			.expect("failed to initialise brightness signal hook");
 		let duration = std::time::Duration::from_millis(self.period);
 		let max_brightness = self.max_brightness / 100; // Adjust for getting the percentage
 
