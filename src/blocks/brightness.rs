@@ -1,6 +1,11 @@
 use super::{default_period, prelude::*};
+use crate::Error;
+use async_stream::stream;
+use futures_util::{Stream, StreamExt};
 use rs_blocks_macros::*;
 use serde::Deserialize;
+use signal_hook_tokio::Signals;
+use tokio::fs;
 
 #[with_fields(period)]
 #[derive(Debug, Deserialize, NoMarkup, GetName, IntoSerialized)]
@@ -9,8 +14,8 @@ pub struct Brightness {
 	update_signal: i32,
 	#[serde(default = "default_path_to_current_brightness")]
 	path_to_current_brightness: String,
-	#[serde(default = "default_path_to_max_brightness")]
-	path_to_max_brightness: String,
+	#[serde(default = "default_max_brightness")]
+	max_brightness: u32,
 }
 
 fn default_update_signal() -> i32 {
@@ -21,6 +26,29 @@ fn default_path_to_current_brightness() -> String {
 	"/sys/class/backlight/intel_backlight/brightness".to_string()
 }
 
-fn default_path_to_max_brightness() -> String {
-	"/sys/class/backlight/intel_backlight/max_brightness".to_string()
+fn default_max_brightness() -> u32 {
+	120000
+}
+
+impl IntoStream for Brightness {
+	fn into_stream(self) -> impl Stream<Item = Result<String, Error>> {
+		let mut signals =
+			Signals::new(&[self.update_signal]).expect("failed to initialise signal hook");
+		let duration = std::time::Duration::from_millis(self.period);
+		let max_brightness = self.max_brightness / 100; // Adjust for getting the percentage
+
+		stream! {
+			loop {
+				// Ignore the Result, it's fine if the timeout elapses
+				let _ = tokio::time::timeout(duration, signals.next()).await;
+				let current: u32 = fs::read_to_string(&self.path_to_current_brightness)
+					.await
+					.map_err(Error::Io)?
+					.trim()
+					.parse()
+					.map_err(|_| Error::Parse { name: "brightness", ty: "u32" })?;
+				yield Ok(format!(" {:.0}%", current / max_brightness));
+			}
+		}
+	}
 }

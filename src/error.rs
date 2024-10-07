@@ -19,6 +19,8 @@ pub enum Error {
 	InvalidBlockName(String),
 	#[error(transparent)]
 	Io(#[from] io::Error),
+	#[error("failed to parse 'name' as '{ty}'")]
+	Parse { name: &'static str, ty: &'static str },
 	#[error("could not pattern match for block '{name}'")]
 	PatternMatch { name: &'static str },
 	#[error(transparent)]

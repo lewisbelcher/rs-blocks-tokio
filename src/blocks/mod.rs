@@ -88,6 +88,7 @@ macro_rules! streamer {
 impl Block {
 	pub fn into_stream(self) -> Pin<Box<dyn Stream<Item = Result<(String, String), Error>>>> {
 		match self {
+			Block::Brightness(x) => streamer!(Brightness, x),
 			Block::Cpu(x) => streamer!(Cpu, x),
 			Block::Memory(x) => streamer!(Memory, x),
 			Block::Time(x) => streamer!(Time, x),
