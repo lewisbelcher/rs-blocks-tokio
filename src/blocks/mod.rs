@@ -2,6 +2,7 @@ use crate::Error;
 use async_stream::stream;
 use futures_util::{Stream, StreamExt};
 use serde::Serialize;
+use std::pin::Pin;
 
 pub mod battery;
 pub mod brightness;
@@ -19,6 +20,10 @@ pub use memory::Memory;
 pub use network::Network;
 pub use time::Time;
 pub use volume::Volume;
+
+pub mod prelude {
+	pub use super::{GetMarkup, GetName, IntoSerialized, IntoStream};
+}
 
 // TODO: Derive macro or attribute macro for `period` and `alpha`
 
@@ -81,7 +86,7 @@ macro_rules! streamer {
 }
 
 impl Block {
-	pub fn into_stream(self) -> std::pin::Pin<Box<dyn Stream<Item = Result<(String, String), Error>>>> {
+	pub fn into_stream(self) -> Pin<Box<dyn Stream<Item = Result<(String, String), Error>>>> {
 		match self {
 			Block::Cpu(x) => streamer!(Cpu, x),
 			Block::Memory(x) => streamer!(Memory, x),
@@ -101,4 +106,12 @@ impl Block {
 			Block::Volume(_) => Volume::get_name(),
 		}
 	}
+}
+
+pub fn default_alpha() -> f32 {
+	0.9
+}
+
+pub fn default_period() -> u64 {
+	700
 }

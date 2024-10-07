@@ -1,29 +1,18 @@
-use super::{GetMarkup, GetName, IntoSerialized};
-use rs_blocks_macros::{GetName, IntoSerialized, PangoMarkup};
+use super::{default_alpha, default_period, prelude::*};
+use rs_blocks_macros::*;
 use serde::Deserialize;
 
 // Add a derive macro with customisable defaults for name and period etc. Or separate derives for
 // default name, default period etc?
+#[with_fields(alpha, period)]
 #[derive(Debug, Deserialize, GetName, PangoMarkup, IntoSerialized)]
 pub struct Battery {
-	#[serde(default = "default_period")]
-	period: u64,
-	#[serde(default = "default_alpha")]
-	alpha: f32,
 	#[serde(default = "default_path_to_charge_now")]
 	path_to_charge_now: String,
 	#[serde(default = "default_path_to_charge_full")]
 	path_to_charge_full: String,
 	#[serde(default = "default_path_to_status")]
 	path_to_status: String,
-}
-
-fn default_period() -> u64 {
-	600
-}
-
-fn default_alpha() -> f32 {
-	0.8
 }
 
 fn default_path_to_charge_now() -> String {
@@ -41,8 +30,8 @@ fn default_path_to_status() -> String {
 #[cfg(test)]
 mod test {
 	use super::*;
+	use crate::blocks::Block;
 	use crate::config;
-	use crate::Block;
 
 	#[test]
 	fn configuration() {

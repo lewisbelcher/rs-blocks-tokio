@@ -1,16 +1,15 @@
-use super::{GetMarkup, GetName, IntoSerialized, IntoStream};
+use super::prelude::*;
 use crate::Error;
 use async_stream::stream;
 use chrono::prelude::*;
 use futures_util::Stream;
-use rs_blocks_macros::{GetName, IntoSerialized, PangoMarkup};
+use rs_blocks_macros::*;
 use serde::Deserialize;
 use tokio::time::{self, Duration};
 
+#[with_fields(period)]
 #[derive(Debug, Deserialize, GetName, PangoMarkup, IntoSerialized)]
 pub struct Time {
-	#[serde(default = "default_period")]
-	period: u64,
 	#[serde(default = "default_format")]
 	format: String,
 }

@@ -1,9 +1,9 @@
-use super::{GetMarkup, GetName, IntoSerialized, IntoStream};
+use super::{default_alpha, default_period, prelude::*};
 use crate::blocks::util;
 use crate::Error;
 use async_stream::stream;
 use futures_util::{Stream, StreamExt};
-use rs_blocks_macros::{GetName, IntoSerialized, NoMarkup};
+use rs_blocks_macros::*;
 use serde::Deserialize;
 
 const PATTERN: &str = r"(?x)
@@ -14,39 +14,33 @@ cpu\s+
 (?<idle>\d+)\s+
 (?<iowait>\d+)\s+
 (?<irq>\d+)\s+
-(?<softirq>\d+)";
+(?<softirq>\d+)\s+
+(?<steal>\d+)";
 
+#[with_fields(alpha, period)]
 #[derive(Debug, Deserialize, NoMarkup, GetName, IntoSerialized)]
 pub struct Cpu {
-	#[serde(default = "default_period")]
-	period: u64,
-	#[serde(default = "default_alpha")]
-	alpha: f32,
 	#[serde(default = "default_cpu_stat_path")]
 	cpu_stat_path: String,
-}
-
-fn default_period() -> u64 {
-	600
-}
-
-fn default_alpha() -> f32 {
-	0.7
 }
 
 fn default_cpu_stat_path() -> String {
 	"/proc/stat".to_string()
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 struct CpuStats {
 	idle: f32,
 	total: f32,
 }
 
 impl CpuStats {
-	fn percent(&self, prev: Self) -> f32 {
-		(1.0 - (self.idle - prev.idle) / (self.total - prev.total)) * 100.0
+	fn percent(&self, prev: Self) -> Option<f32> {
+		if self.total != prev.total {
+			Some((1.0 - (self.idle - prev.idle) / (self.total - prev.total)) * 100.0)
+		} else {
+			None
+		}
 	}
 }
 
@@ -62,8 +56,9 @@ impl TryFrom<regex::Captures<'_>> for CpuStats {
 		let iowait = extract_match(captures.name("iowait"))?;
 		let irq = extract_match(captures.name("irq"))?;
 		let softirq = extract_match(captures.name("softirq"))?;
+		let steal = extract_match(captures.name("steal"))?;
 		let idle = idle + iowait;
-		let total = user + nice + system + idle + iowait + irq + softirq;
+		let total = user + nice + system + idle + iowait + irq + softirq + steal;
 		Ok(CpuStats { idle, total })
 	}
 }
@@ -87,8 +82,10 @@ impl IntoStream for Cpu {
 					.ok_or_else(|| Error::PatternMatch { name: Self::get_name() })?
 					.try_into()?;
 				if let Some(prev) = prev.replace(cpu_stats) {
-					ema.push(cpu_stats.percent(prev));
-					yield Ok(format!(" {:.1}%", ema));
+					if let Some(percent) = cpu_stats.percent(prev) {
+						ema.push(percent);
+						yield Ok(format!(" {:.1}%", ema));
+					}
 				}
 			}
 		}

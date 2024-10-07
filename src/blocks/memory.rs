@@ -1,29 +1,18 @@
-use super::{GetMarkup, GetName, IntoSerialized, IntoStream};
+use super::{default_alpha, default_period, prelude::*};
 use crate::blocks::util;
 use crate::Error;
 use async_stream::stream;
 use futures_util::{Stream, StreamExt};
-use rs_blocks_macros::{GetName, IntoSerialized, NoMarkup};
+use rs_blocks_macros::*;
 use serde::Deserialize;
 
 const PATTERN: &str = r"(?s)MemTotal:\s+(\d+).+MemFree:\s+(\d+)";
 
+#[with_fields(alpha, period)]
 #[derive(Debug, Deserialize, NoMarkup, GetName, IntoSerialized)]
 pub struct Memory {
-	#[serde(default = "default_period")]
-	period: u64,
-	#[serde(default = "default_alpha")]
-	alpha: f32,
 	#[serde(default = "default_meminfo_path")]
 	meminfo_path: String,
-}
-
-fn default_period() -> u64 {
-	600
-}
-
-fn default_alpha() -> f32 {
-	0.7
 }
 
 fn default_meminfo_path() -> String {

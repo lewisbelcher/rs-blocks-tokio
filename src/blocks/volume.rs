@@ -1,17 +1,12 @@
-use super::{GetMarkup, GetName, IntoSerialized};
-use rs_blocks_macros::{GetName, IntoSerialized, NoMarkup};
+use super::{default_period, prelude::*};
+use rs_blocks_macros::*;
 use serde::Deserialize;
 
+#[with_fields(period)]
 #[derive(Debug, Deserialize, NoMarkup, GetName, IntoSerialized)]
 pub struct Volume {
-	#[serde(default = "default_period")]
-	period: u64,
 	#[serde(default = "default_update_signal")]
 	update_signal: i32,
-}
-
-fn default_period() -> u64 {
-	2000
 }
 
 fn default_update_signal() -> i32 {
