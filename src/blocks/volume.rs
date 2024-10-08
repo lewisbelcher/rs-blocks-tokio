@@ -43,7 +43,7 @@ impl TryFrom<String> for VolumeStatus {
 		}
 		let line2 = lines.next().ok_or_else(|| Error::Parse {
 			name: "Volume",
-			ty: "mute string",
+			ty: "volume value",
 		})?;
 		let word1 = line2
 			.trim()
@@ -51,11 +51,11 @@ impl TryFrom<String> for VolumeStatus {
 			.next()
 			.ok_or_else(|| Error::Parse {
 				name: "Volume",
-				ty: "mute string",
+				ty: "volume value",
 			})?;
 		let num = word1.parse::<u8>().map_err(|_| Error::Parse {
 			name: "Volume",
-			ty: "mute string",
+			ty: "volume value",
 		})?;
 		Ok(VolumeStatus::Value(num))
 	}
