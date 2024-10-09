@@ -21,6 +21,8 @@ pub enum Error {
 	Io(#[from] io::Error),
 	#[error("failed to parse '{name}' as '{ty}'")]
 	Parse { name: &'static str, ty: &'static str },
+	#[error("failed to parse '{path}' as '{ty}'")]
+	Parse2 { path: String, ty: &'static str },
 	#[error("could not pattern match for block '{name}'")]
 	PatternMatch { name: &'static str },
 	#[error(transparent)]

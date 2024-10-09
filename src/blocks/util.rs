@@ -4,6 +4,7 @@ use futures_util::Stream;
 use std::fmt::{self, Display, Formatter};
 use std::ops::{Add, Mul, Sub};
 use std::path::Path;
+use std::str::FromStr;
 use tokio::time::{sleep, Duration};
 
 pub struct Ema<T> {
@@ -56,9 +57,17 @@ where
 			let new = tokio::fs::read_to_string(path).await.map_err(Error::Io)?; // TODO: optimisation possible?
 			if new != current {
 				current = new;
-				yield Ok(current.clone().into());
+				yield Ok(current.clone());
 			}
 			sleep(Duration::from_millis(millis)).await;
 		}
 	}
+}
+
+pub async fn read_to_ty<P: AsRef<Path> + ToString, F: FromStr>(path: P) -> Result<F, Error> {
+	let contents = tokio::fs::read_to_string(&path).await.map_err(Error::Io)?;
+	contents.trim().parse().map_err(|_| Error::Parse2 {
+		path: path.to_string(),
+		ty: std::any::type_name::<F>(),
+	})
 }

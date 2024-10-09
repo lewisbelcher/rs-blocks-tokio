@@ -46,7 +46,6 @@ impl TryFrom<String> for VolumeStatus {
 			ty: "volume value",
 		})?;
 		let word1 = line2
-			.trim()
 			.split_whitespace()
 			.next()
 			.ok_or_else(|| Error::Parse {
@@ -74,21 +73,22 @@ impl Display for VolumeStatus {
 impl IntoStream for Volume {
 	fn into_stream(self) -> impl Stream<Item = Result<String, Error>> {
 		let mut signals =
-			Signals::new(&[self.update_signal]).expect("failed to initialise volume signal hook");
+			Signals::new([self.update_signal]).expect("failed to initialise volume signal hook");
 		let duration = std::time::Duration::from_millis(self.period);
 
 		stream! {
 			let mut command = Command::new("pulsemixer");
-			command.args(&["--get-mute", "--get-volume"]);
+			command.args(["--get-mute", "--get-volume"]);
 			loop {
 				// Ignore the Result, it's fine if the timeout elapses
 				let _ = tokio::time::timeout(duration, signals.next()).await;
+				// TODO: This parsing looks very similar to `util::read_to_ty`
 				let status: VolumeStatus = command.output()
 					.await
 					.map(|x| String::from_utf8(x.stdout))
 					.map_err(Error::Io)?
 					.ok()
-					.and_then(|x| x .try_into().ok())
+					.and_then(|x| x.try_into().ok())
 					.ok_or_else(|| Error::Parse { name: "Volume", ty: "UTF-8 string"})?;
 				yield Ok(format!("{}", status));
 			}

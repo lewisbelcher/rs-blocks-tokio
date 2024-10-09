@@ -1,11 +1,11 @@
 use super::prelude::*;
+use crate::blocks::util;
 use crate::Error;
 use async_stream::stream;
 use futures_util::{Stream, StreamExt};
 use rs_blocks_macros::*;
 use serde::Deserialize;
 use signal_hook_tokio::Signals;
-use tokio::fs;
 
 #[with_fields(period)]
 #[derive(Debug, Deserialize, NoMarkup, GetName, IntoSerialized)]
@@ -36,7 +36,7 @@ fn default_max_brightness() -> u32 {
 
 impl IntoStream for Brightness {
 	fn into_stream(self) -> impl Stream<Item = Result<String, Error>> {
-		let mut signals = Signals::new(&[self.update_signal])
+		let mut signals = Signals::new([self.update_signal])
 			.expect("failed to initialise brightness signal hook");
 		let duration = std::time::Duration::from_millis(self.period);
 		let max_brightness = self.max_brightness / 100; // Adjust for getting the percentage
@@ -45,12 +45,7 @@ impl IntoStream for Brightness {
 			loop {
 				// Ignore the Result, it's fine if the timeout elapses
 				let _ = tokio::time::timeout(duration, signals.next()).await;
-				let current: u32 = fs::read_to_string(&self.path_to_current_brightness)
-					.await
-					.map_err(Error::Io)?
-					.trim()
-					.parse()
-					.map_err(|_| Error::Parse { name: "brightness", ty: "u32" })?;
+				let current: u32 = util::read_to_ty(&self.path_to_current_brightness).await?;
 				yield Ok(format!(" {:.0}%", current / max_brightness));
 			}
 		}

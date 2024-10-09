@@ -59,8 +59,22 @@ pub trait IntoSerialized: GetName + GetMarkup {
 	}
 }
 
+type BlockStreamResult = Result<(String, String), Error>;
+
 pub trait IntoStream {
 	fn into_stream(self) -> impl Stream<Item = Result<String, Error>>;
+
+	fn into_stream_pin(self) -> Pin<Box<dyn Stream<Item = BlockStreamResult>>>
+	where
+		Self: 'static + GetName + IntoSerialized + Sized,
+	{
+		Box::pin(stream! {
+			let mut block_stream = Box::pin(self.into_stream());
+			while let Some(text) = block_stream.next().await {
+				yield Ok((Self::get_name().to_string(), Self::into_serialized(text?)?));
+			}
+		})
+	}
 }
 
 #[derive(Debug)]
@@ -74,26 +88,15 @@ pub enum Block {
 	Volume(volume::Volume),
 }
 
-macro_rules! streamer {
-	($name:ident, $var:ident) => {
-		Box::pin(stream! {
-			let mut block_stream = Box::pin($var.into_stream());
-			while let Some(text) = block_stream.next().await {
-				yield Ok((<$name>::get_name().to_string(), <$name>::into_serialized(text?)?));
-			}
-		})
-	};
-}
-
 impl Block {
-	pub fn into_stream(self) -> Pin<Box<dyn Stream<Item = Result<(String, String), Error>>>> {
+	pub fn into_stream(self) -> Pin<Box<dyn Stream<Item = BlockStreamResult>>> {
 		match self {
-			Block::Brightness(x) => streamer!(Brightness, x),
-			Block::Cpu(x) => streamer!(Cpu, x),
-			Block::Memory(x) => streamer!(Memory, x),
-			Block::Network(x) => streamer!(Network, x),
-			Block::Time(x) => streamer!(Time, x),
-			Block::Volume(x) => streamer!(Volume, x),
+			Block::Brightness(x) => x.into_stream_pin(),
+			Block::Cpu(x) => x.into_stream_pin(),
+			Block::Memory(x) => x.into_stream_pin(),
+			Block::Network(x) => x.into_stream_pin(),
+			Block::Time(x) => x.into_stream_pin(),
+			Block::Volume(x) => x.into_stream_pin(),
 			_ => unimplemented!(),
 		}
 	}
