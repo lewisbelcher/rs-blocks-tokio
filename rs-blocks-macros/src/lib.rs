@@ -65,17 +65,17 @@ pub fn derive_into_serialized(input: TokenStream) -> TokenStream {
 ///
 /// ```
 /// use rs_blocks_macros::TryFromCaptures;
-/// 
+///
 /// #[derive(TryFromCaptures)]
 /// struct MyStruct {
 /// 	foo: f32,
 /// 	bar: u64,
 /// }
-/// 
-/// let re = regex::Regex::new(r"(?<foo>\d+) (?<bar>\d+)").unwrap();
-/// let captures = re.captures("456 890").unwrap();
+///
+/// let re = regex::Regex::new(r"(?<foo>\d+\.\d+) (?<bar>\d+)").unwrap();
+/// let captures = re.captures("456.12 890").unwrap();
 /// let data: MyStruct = captures.try_into().unwrap();
-/// assert_eq!(data.foo, 456.0);
+/// assert_eq!(data.foo, 456.12);
 /// assert_eq!(data.bar, 890);
 /// ```
 #[proc_macro_derive(TryFromCaptures)]
@@ -88,27 +88,33 @@ pub fn derive_try_from_captures(input: TokenStream) -> TokenStream {
 			for field in fields {
 				let ident = field.ident.as_ref().unwrap();
 				implementation.extend(quote::quote! {
-					#ident: extract_match(captures.name(stringify!(#ident)))?,
+					#ident: extract_match(&captures, stringify!(#ident))?,
 				});
 			}
 		}
 		_ => unimplemented!("`TryFromCaptures` can only be derived on structs with named fields"),
 	}
 
-	// TODO: Implement a proper error!
+	// TODO: Implement a proper error?
 	let gen = quote::quote! {
+		#[automatically_derived]
 		impl TryFrom<regex::Captures<'_>> for #name {
-			type Error = ();
+			type Error = String;
 
 			fn try_from(captures: regex::Captures<'_>) -> Result<Self, Self::Error> {
 				use std::str::FromStr;
-				fn extract_match<T: FromStr>(m: Option<regex::Match>) -> Result<T, ()> {
-					m.and_then(|x| x.as_str().parse().ok()).ok_or(())
+				fn extract_match<T: FromStr>(captures: &regex::Captures<'_>, name: &str) -> Result<T, String> {
+					captures.name(name)
+						.ok_or(format!("no match group for '{name}'"))
+						.and_then(|m| {
+							m.as_str()
+								.parse()
+								.map_err(|_| format!("couldn't parse '{name}' as {}", std::any::type_name::<T>()))
+						})
 				}
-				let s = Self {
+				Ok(Self {
 					#implementation
-				};
-				Ok(s)
+				})
 			}
 		}
 	};
