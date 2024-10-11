@@ -73,11 +73,9 @@ impl IntoStream for Cpu {
 			let mut ema = util::Ema::new(self.alpha);
 			let mut prev = None;
 			while let Some(contents) = watcher.next().await {
-				let cpu_stats: CpuStats = re.captures(&contents?)
-					.and_then(|x| x.try_into().ok())
-					.ok_or_else(|| Error::Parse { origin: self.cpu_stat_path.to_string(), ty: "CpuStats" })?;
-				if let Some(prev) = prev.replace(cpu_stats) {
-					if let Some(percent) = cpu_stats.percent(prev) {
+				let stats: CpuStats = util::from_string(&re, &contents?, Self::get_name())?;
+				if let Some(prev) = prev.replace(stats) {
+					if let Some(percent) = stats.percent(prev) {
 						ema.push(percent);
 						yield Ok(format!(" {:.1}%", ema));
 					}

@@ -1,6 +1,6 @@
 use std::io;
 
-const USAGE: &str = "Rust Blocks 1.0.0
+const USAGE: &str = "Rust Blocks 0.1.0
 Lewis B. <gitlab.io/lewisbelcher>
 A simple i3blocks replacement written in Rust.
 
@@ -19,16 +19,12 @@ pub enum Error {
 	InvalidBlockName(String),
 	#[error(transparent)]
 	Io(#[from] io::Error),
-	#[error("{0}")]
-	Other(String),
-	#[error("failed to parse contents from '{origin}' as '{ty}'")]
-	Parse { origin: String, ty: &'static str },
+	#[error("error while parsing '{name}': {reason}")]
+	Parse { name: &'static str, reason: String },
 	#[error(transparent)]
 	Serialize(#[from] serde_json::Error),
 	#[error(transparent)]
 	Toml(#[from] toml::de::Error),
-	#[error("trying to access uninitialised block '{0}'")]
-	UninitialisedBlock(String),
 	#[error("{}", USAGE)]
 	Usage,
 }

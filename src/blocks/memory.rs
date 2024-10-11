@@ -38,10 +38,8 @@ impl IntoStream for Memory {
 			let mut watcher = Box::pin(util::watch(&self.meminfo_path, self.period));
 			let mut ema = util::Ema::new(self.alpha);
 			while let Some(contents) = watcher.next().await {
-				let mem_stats: MemStats = re.captures(&contents?)
-					.and_then(|x| x.try_into().ok())
-					.ok_or_else(|| Error::Parse { origin: self.meminfo_path.to_string(), ty: "MemStats" })?;
-				ema.push(mem_stats.percent());
+				let stats: MemStats = util::from_string(&re, &contents?, Self::get_name())?;
+				ema.push(stats.percent());
 				yield Ok(format!(" {:.1}%", ema));
 			}
 		}

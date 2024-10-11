@@ -1,4 +1,5 @@
 use super::prelude::*;
+use crate::blocks::util;
 use crate::Error;
 use async_stream::stream;
 use futures_util::{Stream, StreamExt};
@@ -60,11 +61,12 @@ impl IntoStream for Volume {
 					.await
 					.map(|x| String::from_utf8(x.stdout))
 					.map_err(Error::Io)?
-					.map_err(|e| Error::Parse { origin: "pulsemixer".to_string(), ty: "UTF-8 string" })?;
-				let status: VolumeStats = re.captures(&contents)
-					.and_then(|x| x.try_into().ok())
-					.ok_or_else(|| Error::Parse { origin: "pulsemixer".to_string(), ty: "VolumeStats" })?;
-				yield Ok(format!("{}", status));
+					.map_err(|_| Error::Parse {
+						name: Self::get_name(),
+						reason: "couldn't convert stdout to UTF-8 string".to_string()
+					})?;
+				let stats: VolumeStats = util::from_string(&re, &contents, Self::get_name())?;
+				yield Ok(format!("{}", stats));
 			}
 		}
 	}

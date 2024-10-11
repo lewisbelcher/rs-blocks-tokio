@@ -64,10 +64,41 @@ where
 	}
 }
 
-pub async fn read_to_ty<P: AsRef<Path> + ToString, F: FromStr>(path: P) -> Result<F, Error> {
+/// Read to Type
+///
+/// A convenience function to read a file to a given type `T`.
+pub async fn read_to_ty<P, T>(name: &'static str, path: P) -> Result<T, Error>
+where
+	P: AsRef<Path> + Display,
+	T: FromStr,
+{
 	let contents = tokio::fs::read_to_string(&path).await.map_err(Error::Io)?;
 	contents.trim().parse().map_err(|_| Error::Parse {
-		origin: path.to_string(),
-		ty: std::any::type_name::<F>(),
+		name,
+		reason: format!(
+			"couldn't convert contents of '{path}' to {}",
+			std::any::type_name::<T>()
+		),
 	})
+}
+
+/// From String
+///
+/// A convenience function for converting a regex and string into a given type with
+/// relevant error handling.
+pub fn from_string<'a, T>(
+	re: &regex::Regex,
+	contents: &'a str,
+	name: &'static str,
+) -> Result<T, Error>
+where
+	T: TryFrom<regex::Captures<'a>, Error = String>,
+{
+	re.captures(contents)
+		.ok_or_else(|| Error::Parse {
+			name,
+			reason: "regex pattern match failed".to_string(),
+		})
+		.map(|x| x.try_into())?
+		.map_err(|e| Error::Parse { name, reason: e })
 }
