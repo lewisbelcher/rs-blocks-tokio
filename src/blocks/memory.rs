@@ -6,7 +6,7 @@ use futures_util::{Stream, StreamExt};
 use rs_blocks_macros::*;
 use serde::Deserialize;
 
-const PATTERN: &str = r"(?s)MemTotal:\s+(\d+).+MemFree:\s+(\d+)";
+const PATTERN: &str = r"(?s)MemTotal:\s+(?<total>\d+).+MemFree:\s+(?<free>\d+)";
 
 #[with_fields(alpha, period)]
 #[derive(Debug, Deserialize, NoMarkup, GetName, IntoSerialized)]
@@ -19,6 +19,7 @@ fn default_meminfo_path() -> String {
 	"/proc/meminfo".to_string()
 }
 
+#[derive(TryFromCaptures)]
 struct MemStats {
 	total: f32,
 	free: f32,
@@ -30,25 +31,6 @@ impl MemStats {
 	}
 }
 
-impl TryFrom<regex::Captures<'_>> for MemStats {
-	type Error = Error;
-
-	fn try_from(captures: regex::Captures<'_>) -> Result<Self, Self::Error> {
-		// TODO: What would we do if we wanted to specify the file path in the error?
-		Ok(MemStats {
-			total: extract_match(captures.get(1), "Memory")?,
-			free: extract_match(captures.get(2), "Memory")?,
-		})
-	}
-}
-
-fn extract_match(m: Option<regex::Match>, name: &'static str) -> Result<f32, Error> {
-	m.ok_or_else(|| Error::PatternMatch { name })?
-		.as_str()
-		.parse()
-		.map_err(|_| Error::PatternMatch { name })
-}
-
 impl IntoStream for Memory {
 	fn into_stream(self) -> impl Stream<Item = Result<String, Error>> {
 		let re = regex::Regex::new(PATTERN).unwrap();
@@ -57,8 +39,8 @@ impl IntoStream for Memory {
 			let mut ema = util::Ema::new(self.alpha);
 			while let Some(contents) = watcher.next().await {
 				let mem_stats: MemStats = re.captures(&contents?)
-					.ok_or_else(|| Error::PatternMatch { name: Self::get_name() })?
-					.try_into()?;
+					.and_then(|x| x.try_into().ok())
+					.ok_or_else(|| Error::Parse { origin: self.meminfo_path.to_string(), ty: "MemStats" })?;
 				ema.push(mem_stats.percent());
 				yield Ok(format!(" {:.1}%", ema));
 			}

@@ -66,8 +66,8 @@ where
 
 pub async fn read_to_ty<P: AsRef<Path> + ToString, F: FromStr>(path: P) -> Result<F, Error> {
 	let contents = tokio::fs::read_to_string(&path).await.map_err(Error::Io)?;
-	contents.trim().parse().map_err(|_| Error::Parse2 {
-		path: path.to_string(),
+	contents.trim().parse().map_err(|_| Error::Parse {
+		origin: path.to_string(),
 		ty: std::any::type_name::<F>(),
 	})
 }

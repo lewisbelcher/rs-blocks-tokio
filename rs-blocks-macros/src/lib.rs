@@ -53,6 +53,68 @@ pub fn derive_into_serialized(input: TokenStream) -> TokenStream {
 	gen.into()
 }
 
+/// TryFromCaptures
+///
+/// A very contrived macro which will implement `TryFrom<regex::Captures<'_>>` on a given struct.
+///
+/// Some very coarse assumptions:
+/// - The struct must implement only named fields which have scalar types
+/// - Each field must correspond exactly with one named group in the resulting `regex::Captures`
+///
+/// Example:
+///
+/// ```
+/// use rs_blocks_macros::TryFromCaptures;
+/// 
+/// #[derive(TryFromCaptures)]
+/// struct MyStruct {
+/// 	foo: f32,
+/// 	bar: u64,
+/// }
+/// 
+/// let re = regex::Regex::new(r"(?<foo>\d+) (?<bar>\d+)").unwrap();
+/// let captures = re.captures("456 890").unwrap();
+/// let data: MyStruct = captures.try_into().unwrap();
+/// assert_eq!(data.foo, 456.0);
+/// assert_eq!(data.bar, 890);
+/// ```
+#[proc_macro_derive(TryFromCaptures)]
+pub fn derive_try_from_captures(input: TokenStream) -> TokenStream {
+	let ast = syn::parse_macro_input!(input as syn::DeriveInput);
+	let name = &ast.ident;
+	let mut implementation = quote::quote! {};
+	match &ast.data {
+		syn::Data::Struct(syn::DataStruct { fields, .. }) => {
+			for field in fields {
+				let ident = field.ident.as_ref().unwrap();
+				implementation.extend(quote::quote! {
+					#ident: extract_match(captures.name(stringify!(#ident)))?,
+				});
+			}
+		}
+		_ => unimplemented!("`TryFromCaptures` can only be derived on structs with named fields"),
+	}
+
+	// TODO: Implement a proper error!
+	let gen = quote::quote! {
+		impl TryFrom<regex::Captures<'_>> for #name {
+			type Error = ();
+
+			fn try_from(captures: regex::Captures<'_>) -> Result<Self, Self::Error> {
+				use std::str::FromStr;
+				fn extract_match<T: FromStr>(m: Option<regex::Match>) -> Result<T, ()> {
+					m.and_then(|x| x.as_str().parse().ok()).ok_or(())
+				}
+				let s = Self {
+					#implementation
+				};
+				Ok(s)
+			}
+		}
+	};
+	gen.into()
+}
+
 /// Add common block fields to a struct
 ///
 /// Available fields are `alpha` and `period`. A serde default will be used which uses the function

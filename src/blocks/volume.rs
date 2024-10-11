@@ -8,6 +8,8 @@ use signal_hook_tokio::Signals;
 use std::fmt::{self, Display, Formatter};
 use tokio::process::Command;
 
+const AUDIO_DRIVER_COMMAND: &str = "pulsemixer";
+
 #[with_fields(period)]
 #[derive(Debug, Deserialize, NoMarkup, GetName, IntoSerialized)]
 pub struct Volume {
@@ -34,29 +36,28 @@ impl TryFrom<String> for VolumeStatus {
 
 	fn try_from(value: String) -> Result<Self, Self::Error> {
 		let mut lines = value.lines();
+
 		let line1 = lines.next().ok_or_else(|| Error::Parse {
-			name: "Volume",
-			ty: "mute string",
+			origin: format!("{} mute indicator", AUDIO_DRIVER_COMMAND),
+			ty: "string",
 		})?;
 		if line1.trim() == "1" {
 			return Ok(VolumeStatus::Mute);
 		}
-		let line2 = lines.next().ok_or_else(|| Error::Parse {
-			name: "Volume",
-			ty: "volume value",
-		})?;
-		let word1 = line2
-			.split_whitespace()
+
+		lines
 			.next()
+			.and_then(|line2| {
+				line2
+					.split_whitespace()
+					.next()
+					.and_then(|word1| word1.parse::<u8>().ok())
+			})
 			.ok_or_else(|| Error::Parse {
-				name: "Volume",
-				ty: "volume value",
-			})?;
-		let num = word1.parse::<u8>().map_err(|_| Error::Parse {
-			name: "Volume",
-			ty: "volume value",
-		})?;
-		Ok(VolumeStatus::Value(num))
+				origin: format!("{} volume value", AUDIO_DRIVER_COMMAND),
+				ty: "u8",
+			})
+			.map(VolumeStatus::Value)
 	}
 }
 
@@ -77,7 +78,7 @@ impl IntoStream for Volume {
 		let duration = std::time::Duration::from_millis(self.period);
 
 		stream! {
-			let mut command = Command::new("pulsemixer");
+			let mut command = Command::new(AUDIO_DRIVER_COMMAND);
 			command.args(["--get-mute", "--get-volume"]);
 			loop {
 				// Ignore the Result, it's fine if the timeout elapses
@@ -89,7 +90,7 @@ impl IntoStream for Volume {
 					.map_err(Error::Io)?
 					.ok()
 					.and_then(|x| x.try_into().ok())
-					.ok_or_else(|| Error::Parse { name: "Volume", ty: "UTF-8 string"})?;
+					.ok_or_else(|| Error::Parse { origin: AUDIO_DRIVER_COMMAND.to_string(), ty: "UTF-8 string"})?;
 				yield Ok(format!("{}", status));
 			}
 		}
