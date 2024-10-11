@@ -25,6 +25,8 @@ pub mod prelude {
 	pub use super::{GetMarkup, GetName, IntoSerialized, IntoStream};
 }
 
+type BlockStreamResult = Result<(String, String), Error>;
+
 // TODO: Derive macro or attribute macro for `period` and `alpha`
 
 pub trait GetName {
@@ -59,9 +61,9 @@ pub trait IntoSerialized: GetName + GetMarkup {
 	}
 }
 
-type BlockStreamResult = Result<(String, String), Error>;
-
 pub trait IntoStream {
+	// TODO: should be try_into_stream. Some blocks have logic that could return an
+	// error while setting up the stream (e.g. Battery)
 	fn into_stream(self) -> impl Stream<Item = Result<String, Error>>;
 
 	fn into_stream_pin(self) -> Pin<Box<dyn Stream<Item = BlockStreamResult>>>

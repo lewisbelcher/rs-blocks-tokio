@@ -1,4 +1,8 @@
 use super::{default_alpha, default_period, prelude::*};
+use crate::blocks::util;
+use crate::Error;
+use async_stream::stream;
+use futures_util::{Stream, StreamExt};
 use rs_blocks_macros::*;
 use serde::Deserialize;
 
@@ -25,6 +29,21 @@ fn default_path_to_charge_full() -> String {
 
 fn default_path_to_status() -> String {
 	"/sys/class/power_supply/BAT0/status".to_string()
+}
+
+impl IntoStream for Battery {
+	fn into_stream(self) -> impl Stream<Item = Result<String, Error>> {
+		// let max: f32 = util::read_to_ty(&self.path_to_charge_full, Self::get_name()).await.unwrap();
+		let mut ema = util::Ema::new(self.alpha);
+		stream! {
+			let mut now_watcher = Box::pin(util::watch(&self.path_to_charge_now, self.period));
+			let mut status_watcher = Box::pin(util::watch(&self.path_to_status, self.period));
+
+			while let Some(contents) = now_watcher.next().await {
+				yield Ok(format!(" {:.1}%", 1));
+			}
+		}
+	}
 }
 
 #[cfg(test)]
