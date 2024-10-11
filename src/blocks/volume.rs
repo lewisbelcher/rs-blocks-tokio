@@ -50,10 +50,10 @@ impl IntoStream for Volume {
 			Signals::new([self.update_signal]).expect("failed to initialise volume signal hook");
 		let duration = std::time::Duration::from_millis(self.period);
 		let re = regex::Regex::new(PATTERN).unwrap();
+		let mut command = Command::new(AUDIO_DRIVER_COMMAND);
+		command.args(["--get-mute", "--get-volume"]);
 
 		stream! {
-			let mut command = Command::new(AUDIO_DRIVER_COMMAND);
-			command.args(["--get-mute", "--get-volume"]);
 			loop {
 				// Ignore the Result, it's fine if the timeout elapses
 				let _ = tokio::time::timeout(duration, signals.next()).await;

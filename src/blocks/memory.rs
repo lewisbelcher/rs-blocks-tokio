@@ -34,9 +34,9 @@ impl MemStats {
 impl IntoStream for Memory {
 	fn into_stream(self) -> impl Stream<Item = Result<String, Error>> {
 		let re = regex::Regex::new(PATTERN).unwrap();
+		let mut ema = util::Ema::new(self.alpha);
 		stream! {
 			let mut watcher = Box::pin(util::watch(&self.meminfo_path, self.period));
-			let mut ema = util::Ema::new(self.alpha);
 			while let Some(contents) = watcher.next().await {
 				let stats: MemStats = util::from_string(&re, &contents?, Self::get_name())?;
 				ema.push(stats.percent());

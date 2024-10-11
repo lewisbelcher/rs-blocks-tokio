@@ -68,10 +68,10 @@ impl CpuStats {
 impl IntoStream for Cpu {
 	fn into_stream(self) -> impl Stream<Item = Result<String, Error>> {
 		let re = regex::Regex::new(PATTERN).unwrap();
+		let mut ema = util::Ema::new(self.alpha);
+		let mut prev = None;
 		stream! {
 			let mut watcher = Box::pin(util::watch(&self.cpu_stat_path, self.period));
-			let mut ema = util::Ema::new(self.alpha);
-			let mut prev = None;
 			while let Some(contents) = watcher.next().await {
 				let stats: CpuStats = util::from_string(&re, &contents?, Self::get_name())?;
 				if let Some(prev) = prev.replace(stats) {

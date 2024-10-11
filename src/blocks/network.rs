@@ -44,8 +44,8 @@ impl IntoStream for Network {
 		let coef = 1.0 / (self.period as f32 * 1.024); // Report in kB/s (NB period is in ms)
 		let mut rx = NetworkSpeed::new(coef);
 		let mut tx = NetworkSpeed::new(coef);
+		let mut interval = time::interval(Duration::from_millis(self.period));
 		stream! {
-			let mut interval = time::interval(Duration::from_millis(self.period));
 			rx.push(util::read_to_ty(Self::get_name(), &self.path_to_rx).await?);
 			tx.push(util::read_to_ty(Self::get_name(), &self.path_to_tx).await?);
 			loop {
