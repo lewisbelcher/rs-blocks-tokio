@@ -19,10 +19,10 @@ pub enum Error {
 	InvalidBlockName(String),
 	#[error(transparent)]
 	Io(#[from] io::Error),
+	#[error("{0}")]
+	Other(String),
 	#[error("failed to parse contents from '{origin}' as '{ty}'")]
 	Parse { origin: String, ty: &'static str },
-	#[error("could not pattern match for block '{name}'")]
-	PatternMatch { name: &'static str },
 	#[error(transparent)]
 	Serialize(#[from] serde_json::Error),
 	#[error(transparent)]

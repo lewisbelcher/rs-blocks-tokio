@@ -58,7 +58,7 @@ pub fn derive_into_serialized(input: TokenStream) -> TokenStream {
 /// A very contrived macro which will implement `TryFrom<regex::Captures<'_>>` on a given struct.
 ///
 /// Some very coarse assumptions:
-/// - The struct must implement only named fields which have scalar types
+/// - The struct must contain only named fields which have scalar types
 /// - Each field must correspond exactly with one named group in the resulting `regex::Captures`
 ///
 /// Example:
