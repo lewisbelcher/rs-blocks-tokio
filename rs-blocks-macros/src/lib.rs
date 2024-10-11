@@ -68,8 +68,8 @@ pub fn derive_into_serialized(input: TokenStream) -> TokenStream {
 ///
 /// #[derive(TryFromCaptures)]
 /// struct MyStruct {
-/// 	foo: f32,
-/// 	bar: u64,
+///   foo: f32,
+///   bar: u64,
 /// }
 ///
 /// let re = regex::Regex::new(r"(?<foo>\d+\.\d+) (?<bar>\d+)").unwrap();
@@ -137,11 +137,11 @@ pub fn derive_try_from_captures(input: TokenStream) -> TokenStream {
 /// #[with_fields(alpha)]
 /// #[derive(Deserialize)]
 /// struct A {
-/// 	name: String
+///   name: String
 /// }
 ///
 /// fn default_alpha() -> f32 {
-/// 	0.1
+///   0.1
 /// }
 ///
 /// let a: A = serde_json::from_str("{ \"name\": \"hello\" }").unwrap();
