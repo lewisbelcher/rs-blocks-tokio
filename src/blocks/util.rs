@@ -29,6 +29,16 @@ where
 		self.current = Some(current);
 		current
 	}
+
+	pub fn is_none(&self) -> bool {
+		self.current.is_none()
+	}
+}
+
+impl<T: Copy> From<&Ema<T>> for Option<T> {
+	fn from(ema: &Ema<T>) -> Self {
+		ema.current
+	}
 }
 
 // We want to display `current`. So we defer the Display trait to `T`

@@ -93,13 +93,13 @@ pub enum Block {
 impl Block {
 	pub fn into_stream(self) -> Pin<Box<dyn Stream<Item = BlockStreamResult>>> {
 		match self {
+			Block::Battery(x) => x.into_stream_pin(),
 			Block::Brightness(x) => x.into_stream_pin(),
 			Block::Cpu(x) => x.into_stream_pin(),
 			Block::Memory(x) => x.into_stream_pin(),
 			Block::Network(x) => x.into_stream_pin(),
 			Block::Time(x) => x.into_stream_pin(),
 			Block::Volume(x) => x.into_stream_pin(),
-			_ => unimplemented!(),
 		}
 	}
 
