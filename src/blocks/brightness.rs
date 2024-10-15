@@ -1,11 +1,10 @@
-use super::prelude::*;
-use crate::blocks::util;
+use crate::blocks::{prelude::*, util};
 use crate::Error;
 use async_stream::stream;
 use futures_util::Stream;
-use tokio::signal::unix::{signal, SignalKind};
 use rs_blocks_macros::*;
 use serde::Deserialize;
+use tokio::signal::unix::{signal, SignalKind};
 
 #[with_fields(period)]
 #[derive(Debug, Deserialize, NoMarkup, GetName, IntoSerialized)]

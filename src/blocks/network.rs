@@ -1,5 +1,4 @@
-use super::{default_alpha, default_period, prelude::*};
-use crate::blocks::util;
+use crate::blocks::{default_alpha, default_period, prelude::*, util};
 use crate::Error;
 use async_stream::stream;
 use futures_util::Stream;
