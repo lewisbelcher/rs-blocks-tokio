@@ -2,12 +2,12 @@ use super::prelude::*;
 use crate::blocks::util;
 use crate::Error;
 use async_stream::stream;
-use futures_util::{Stream, StreamExt};
+use futures_util::Stream;
 use rs_blocks_macros::*;
 use serde::Deserialize;
-use signal_hook_tokio::Signals;
 use std::fmt::{self, Display, Formatter};
 use tokio::process::Command;
+use tokio::signal::unix::{signal, SignalKind};
 
 const AUDIO_DRIVER_COMMAND: &str = "pulsemixer";
 const PATTERN: &str = r"(?<mute>\d)\n(?<level>\d+)";
@@ -23,9 +23,8 @@ fn default_period() -> u64 {
 	2000
 }
 
-// TODO: Use tokio::signal::unix::SignalKind
 fn default_update_signal() -> i32 {
-	signal_hook::consts::SIGUSR2
+	SignalKind::user_defined2().as_raw_value().into()
 }
 
 #[derive(TryFromCaptures)]
@@ -47,8 +46,8 @@ impl Display for VolumeStats {
 
 impl IntoStream for Volume {
 	fn into_stream(self) -> impl Stream<Item = Result<String, Error>> {
-		let mut signals =
-			Signals::new([self.update_signal]).expect("failed to initialise volume signal hook");
+		let mut signal_stream = signal(SignalKind::from_raw(self.update_signal))
+			.expect("failed to initialise Volume signal hook");
 		let duration = std::time::Duration::from_millis(self.period);
 		let re = regex::Regex::new(PATTERN).unwrap();
 		let mut command = Command::new(AUDIO_DRIVER_COMMAND);
@@ -57,7 +56,7 @@ impl IntoStream for Volume {
 		stream! {
 			loop {
 				// Ignore the Result, it's fine if the timeout elapses
-				let _ = tokio::time::timeout(duration, signals.next()).await;
+				let _ = tokio::time::timeout(duration, signal_stream.recv()).await;
 				let contents = command.output()
 					.await
 					.map(|x| String::from_utf8(x.stdout))
