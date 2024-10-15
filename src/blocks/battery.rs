@@ -199,25 +199,28 @@ impl fmt::Display for Remaining {
 impl IntoStream for Battery {
 	fn into_stream(self) -> impl Stream<Item = Result<String, Error>> {
 		// TODO: Load initial charge now, max and status values up front (using blocking functions?)
+
+		// It would be nice to run this on the current runtime, but we want to use `current_thread` and
+		// apparently `Handle::block_on` is error-prone when using `current_thread`. See
+		// https://docs.rs/tokio/latest/tokio/runtime/struct.Handle.html#method.block_on
+		let max: f32 = {
+			let future = util::read_to_ty("Battery", &self.path_to_charge_full);
+			futures::executor::block_on(future).unwrap()
+		};
+		let mut charge_fraction: f32 = {
+			let future = util::read_to_ty("Battery", &self.path_to_charge_now);
+			let charge: f32 = futures::executor::block_on(future).unwrap();
+			charge / max
+		};
+		let mut status: Status = {
+			let future = util::read_to_ty("Battery", &self.path_to_status);
+			let status_str: String = futures::executor::block_on(future).unwrap();
+			(status_str.as_str(), self.alpha).try_into().unwrap()
+		};
+
 		stream! {
 			let mut charge_watcher = Box::pin(util::watch(&self.path_to_charge_now, self.period));
 			let mut status_watcher = Box::pin(util::watch(&self.path_to_status, self.period));
-			let max: f32 = util::read_to_ty("Battery", self.path_to_charge_full).await.unwrap();
-			let mut charge_fraction = {
-				let charge: f32 = charge_watcher.next().await
-					.unwrap()
-					.expect(&format!("couldn't read '{}'", self.path_to_charge_now))
-					.trim()
-					.parse()
-					.unwrap();
-				charge / max
-			};
-			let mut status: Status = (status_watcher.next().await
-				.unwrap()
-				.expect(&format!("couldn't read '{}'", self.path_to_status))
-				.as_str(), self.alpha)
-				.try_into()
-				.unwrap();
 			let mut prev_charge: Option<f32> = None;
 			let mut interval = Interval::new();
 			loop {

@@ -23,6 +23,7 @@ fn default_period() -> u64 {
 	2000
 }
 
+// TODO: Use tokio::signal::unix::SignalKind
 fn default_update_signal() -> i32 {
 	signal_hook::consts::SIGUSR2
 }
