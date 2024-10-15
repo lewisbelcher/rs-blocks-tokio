@@ -39,28 +39,55 @@ fn default_path_to_status() -> String {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Status {
-	Charging,
-	Discharging,
+	Charging(Remaining),
+	Discharging(Remaining),
 	Full,
 	NotCharging,
 	Unknown,
 }
 
-impl TryFrom<&str> for Status {
+impl Status {
+	fn push(&mut self, max: f32, charge: f32, rate: f32) {
+		match self {
+			Status::Charging(ref mut rem) => rem.push((max - charge) / rate),
+			Status::Discharging(ref mut rem) => rem.push(charge / rate),
+			Status::Full => {}
+			Status::NotCharging => {}
+			Status::Unknown => {}
+		};
+	}
+}
+
+impl TryFrom<(&str, f32)> for Status {
 	type Error = Error;
 
-	fn try_from(value: &str) -> Result<Self, Self::Error> {
-		match value.trim() {
-			"Charging" => Ok(Status::Charging),
-			"Discharging" => Ok(Status::Discharging),
-			"Full" => Ok(Status::Full),
-			"Not charging" => Ok(Status::NotCharging),
-			"Unknown" => Ok(Status::Unknown),
-			e => Err(Error::Parse {
-				name: "Battery",
-				reason: format!("Unknown battery status '{e}'"),
-			}),
-		}
+	fn try_from((value, alpha): (&str, f32)) -> Result<Self, Self::Error> {
+		let status = match value.trim() {
+			"Charging" => Status::Charging(Remaining::new(alpha)),
+			"Discharging" => Status::Discharging(Remaining::new(alpha)),
+			"Full" => Status::Full,
+			"Not charging" => Status::NotCharging,
+			"Unknown" => Status::Unknown,
+			e => {
+				return Err(Error::Parse {
+					name: "Battery",
+					reason: format!("Unknown battery status '{e}'"),
+				})
+			}
+		};
+		Ok(status)
+	}
+}
+
+impl fmt::Display for Status {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let string = match self {
+			Self::Charging(rem) | Self::Discharging(rem) => &format!("{rem}"),
+			Self::Full => "Full",
+			Self::NotCharging => "NotCharging",
+			Self::Unknown => "Unknown",
+		};
+		write!(f, "{string}")
 	}
 }
 
@@ -91,7 +118,7 @@ fn get_discharge_symbol(fraction: f32) -> &'static str {
 
 fn get_symbol(status: Status, fraction: f32) -> String {
 	let string = match status {
-		Status::Discharging => get_discharge_symbol(fraction),
+		Status::Discharging(_) => get_discharge_symbol(fraction),
 		_ => " ",
 	};
 	wrap_in_colour(string, fraction)
@@ -128,6 +155,7 @@ impl Interval {
 	}
 }
 
+#[derive(PartialEq, Debug, Clone, Copy)]
 enum Remaining {
 	Minutes(util::Ema<f32>),
 	Calculating(f32),
@@ -138,14 +166,15 @@ impl Remaining {
 		Self::Calculating(alpha)
 	}
 
-	fn push(&mut self, value: f32) -> f32 {
+	fn push(&mut self, value: f32) {
 		match self {
-			Self::Minutes(ema) => ema.push(value),
+			Self::Minutes(ema) => {
+				ema.push(value);
+			}
 			Self::Calculating(alpha) => {
 				let mut ema = util::Ema::new(*alpha);
-				let value = ema.push(value);
+				ema.push(value);
 				*self = Remaining::Minutes(ema);
-				value
 			}
 		}
 	}
@@ -169,26 +198,28 @@ impl fmt::Display for Remaining {
 
 impl IntoStream for Battery {
 	fn into_stream(self) -> impl Stream<Item = Result<String, Error>> {
+		// TODO: Load initial charge now, max and status values up front (using blocking functions?)
 		stream! {
 			let mut charge_watcher = Box::pin(util::watch(&self.path_to_charge_now, self.period));
 			let mut status_watcher = Box::pin(util::watch(&self.path_to_status, self.period));
 			let max: f32 = util::read_to_ty("Battery", self.path_to_charge_full).await.unwrap();
-			let charge: f32 = charge_watcher.next().await
-				.unwrap()
-				.expect(&format!("couldn't read '{}'", self.path_to_charge_now))
-				.trim()
-				.parse()
-				.unwrap();
-			let mut charge_fraction = charge / max;
-			let mut status: Status = status_watcher.next().await
+			let mut charge_fraction = {
+				let charge: f32 = charge_watcher.next().await
+					.unwrap()
+					.expect(&format!("couldn't read '{}'", self.path_to_charge_now))
+					.trim()
+					.parse()
+					.unwrap();
+				charge / max
+			};
+			let mut status: Status = (status_watcher.next().await
 				.unwrap()
 				.expect(&format!("couldn't read '{}'", self.path_to_status))
-				.as_str()
+				.as_str(), self.alpha)
 				.try_into()
 				.unwrap();
 			let mut prev_charge: Option<f32> = None;
 			let mut interval = Interval::new();
-			let mut remaining = Remaining::new(self.alpha);
 			loop {
 				tokio::select! {
 					Some(new_charge) = charge_watcher.next() => {
@@ -196,31 +227,19 @@ impl IntoStream for Battery {
 						let new_charge = new_charge.unwrap().trim().parse().unwrap(); // TODO
 						charge_fraction = new_charge / max;
 						if let Some(prev_charge) = prev_charge.replace(new_charge) {
-							let gap = match status {
-								Status::Charging => max - new_charge,
-								Status::Discharging => new_charge,
-								Status::Full => 0.0,
-								Status::NotCharging => new_charge,
-								Status::Unknown => new_charge,
-							};
 							let rate = (prev_charge - new_charge).abs() / elapsed;
-							remaining.push(gap / rate);
-						} else {
-							remaining = Remaining::new(self.alpha);
-						};
+							status.push(max, new_charge, rate);
+						}
 					},
 					Some(new_status) = status_watcher.next() => {
-						status = new_status.unwrap().as_str().try_into().unwrap(); // TODO
-						remaining = Remaining::new(self.alpha);
+						status = (new_status.unwrap().as_str(), self.alpha).try_into().unwrap(); // TODO
 						interval = Interval::new();
 						prev_charge = None;
 					},
 				}
-				// TODO: We don't correctly report when the battery is full if the power is unplugged and
-				// plugged in again when the battery is full.
 				let symbol = get_symbol(status, charge_fraction);
 				let percent = 100.0 * charge_fraction;
-				yield Ok(format!("{symbol} {percent:.0}% ({remaining})"));
+				yield Ok(format!("{symbol} {percent:.0}% ({status})"));
 			}
 		}
 	}
@@ -266,5 +285,31 @@ mod test {
 
 		let result = wrap_in_colour("a", 0.01);
 		assert_eq!(result, "<span foreground=\'#ff0500\'>a</span>");
+	}
+
+	#[test]
+	fn changing_remaining() {
+		let mut remaining = Remaining::new(0.5);
+		assert_eq!(remaining, Remaining::Calculating(0.5));
+		remaining.push(1.0);
+		let mut expected_ema = util::Ema::new(0.5);
+		expected_ema.push(1.0);
+		assert_eq!(remaining, Remaining::Minutes(expected_ema));
+	}
+
+	#[test]
+	fn changing_status() {
+		let mut status: Status = ("Discharging", 0.5).try_into().unwrap();
+		match status {
+			Status::Discharging(rem) => assert_eq!(rem, Remaining::Calculating(0.5)),
+			_ => panic!("should not get here"),
+		}
+		status.push(1.0, 1.0, 1.0);
+		let mut expected_ema = util::Ema::new(0.5);
+		expected_ema.push(1.0);
+		match status {
+			Status::Discharging(rem) => assert_eq!(rem, Remaining::Minutes(expected_ema)),
+			_ => panic!("should not get here"),
+		}
 	}
 }

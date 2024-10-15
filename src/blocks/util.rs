@@ -7,14 +7,15 @@ use std::path::Path;
 use std::str::FromStr;
 use tokio::time::{sleep, Duration};
 
-pub struct Ema<T> {
+#[derive(PartialEq, Debug, Copy, Clone)]
+pub struct Ema<T: PartialEq> {
 	current: Option<T>,
 	alpha: T,
 }
 
 impl<T> Ema<T>
 where
-	T: From<u8> + Copy + Mul<Output = T> + Add<Output = T> + Sub<Output = T>,
+	T: From<u8> + Copy + Mul<Output = T> + Add<Output = T> + Sub<Output = T> + PartialEq,
 {
 	pub fn new(alpha: T) -> Ema<T> {
 		Ema {
@@ -29,13 +30,9 @@ where
 		self.current = Some(current);
 		current
 	}
-
-	pub fn is_none(&self) -> bool {
-		self.current.is_none()
-	}
 }
 
-impl<T: Copy> From<&Ema<T>> for Option<T> {
+impl<T: Copy + PartialEq> From<&Ema<T>> for Option<T> {
 	fn from(ema: &Ema<T>) -> Self {
 		ema.current
 	}
@@ -44,7 +41,7 @@ impl<T: Copy> From<&Ema<T>> for Option<T> {
 // We want to display `current`. So we defer the Display trait to `T`
 impl<T> Display for Ema<T>
 where
-	T: Display + Copy,
+	T: Display + Copy + PartialEq,
 {
 	fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
 		if let Some(current) = self.current {
