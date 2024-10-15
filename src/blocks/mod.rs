@@ -27,8 +27,6 @@ pub mod prelude {
 
 type BlockStreamResult = Result<(String, String), Error>;
 
-// TODO: Derive macro or attribute macro for `period` and `alpha`
-
 pub trait GetName {
 	fn get_name() -> &'static str;
 }

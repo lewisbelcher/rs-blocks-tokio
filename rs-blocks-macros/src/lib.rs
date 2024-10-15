@@ -149,7 +149,7 @@ pub fn derive_try_from_captures(input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn with_fields(attr: TokenStream, item: TokenStream) -> TokenStream {
-	// Can't use syn::parse_macro_input directly because there are multiple strategies for parsing a
+	// Can't use `syn::parse_macro_input` because there are multiple strategies for parsing a
 	// punctuated sequence (empty allowed, trailing punctuation allowed etc) and we need to specify
 	// which is okay
 	let names = Punctuated::<syn::Ident, Token![,]>::parse_separated_nonempty

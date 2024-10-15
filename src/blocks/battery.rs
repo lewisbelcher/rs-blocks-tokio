@@ -197,11 +197,10 @@ impl fmt::Display for Remaining {
 
 impl IntoStream for Battery {
 	fn into_stream(self) -> impl Stream<Item = Result<String, Error>> {
-		// TODO: Load initial charge now, max and status values up front (using blocking functions?)
-
-		// It would be nice to run this on the current runtime, but we want to use `current_thread` and
-		// apparently `Handle::block_on` is error-prone when using `current_thread`. See
+		// We want to run these on the current thread and blocking during stream setup. Apparently
+		// tokio's `Handle::block_on` is error-prone when using `current_thread`. See
 		// https://docs.rs/tokio/latest/tokio/runtime/struct.Handle.html#method.block_on
+		// But `futures::executor::block_on` works and executes on the current thread.
 		let max: f32 = {
 			let future = util::read_to_ty("Battery", &self.path_to_charge_full);
 			futures::executor::block_on(future).unwrap()
