@@ -31,7 +31,7 @@ async fn main() -> Result<(), error::Error> {
 		.collect();
 	loop {
 		let res = futures.select_next_some().await?;
-		output_map.insert(res.0, res.1);
-		println!("{}", serde_json::to_string(&output_map).unwrap());
+		output_map.insert(res.block_name, res.json);
+		println!("{}", serde_json::to_string(&output_map).map_err(Error::Serialize)?);
 	}
 }

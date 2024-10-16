@@ -25,8 +25,6 @@ pub mod prelude {
 	pub use super::{GetMarkup, GetName, IntoSerialized, IntoStream};
 }
 
-type BlockStreamResult = Result<(String, String), Error>;
-
 pub trait GetName {
 	fn get_name() -> &'static str;
 }
@@ -59,19 +57,26 @@ pub trait IntoSerialized: GetName + GetMarkup {
 	}
 }
 
+pub struct BlockResponse {
+	pub block_name: String,
+	pub json: String,
+}
+
 pub trait IntoStream {
 	// TODO: should be try_into_stream. Some blocks have logic that could return an
 	// error while setting up the stream (e.g. Battery)
 	fn into_stream(self) -> impl Stream<Item = Result<String, Error>>;
 
-	fn into_stream_pin(self) -> Pin<Box<dyn Stream<Item = BlockStreamResult>>>
+	fn into_stream_pin(self) -> Pin<Box<dyn Stream<Item = Result<BlockResponse, Error>>>>
 	where
 		Self: 'static + GetName + IntoSerialized + Sized,
 	{
 		Box::pin(stream! {
 			let mut block_stream = Box::pin(self.into_stream());
 			while let Some(text) = block_stream.next().await {
-				yield Ok((Self::get_name().to_string(), Self::into_serialized(text?)?));
+				let block_name = Self::get_name().to_string();
+				let json = Self::into_serialized(text?)?;
+				yield Ok(BlockResponse { block_name, json } );
 			}
 		})
 	}
@@ -89,7 +94,7 @@ pub enum Block {
 }
 
 impl Block {
-	pub fn into_stream(self) -> Pin<Box<dyn Stream<Item = BlockStreamResult>>> {
+	pub fn into_stream(self) -> Pin<Box<dyn Stream<Item = Result<BlockResponse, Error>>>> {
 		match self {
 			Block::Battery(x) => x.into_stream_pin(),
 			Block::Brightness(x) => x.into_stream_pin(),

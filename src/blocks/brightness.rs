@@ -22,7 +22,7 @@ fn default_period() -> u64 {
 }
 
 fn default_update_signal() -> i32 {
-	SignalKind::user_defined1().as_raw_value().into()
+	SignalKind::user_defined1().as_raw_value()
 }
 
 fn default_path_to_current_brightness() -> String {

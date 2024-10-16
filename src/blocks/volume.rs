@@ -23,7 +23,7 @@ fn default_period() -> u64 {
 }
 
 fn default_update_signal() -> i32 {
-	SignalKind::user_defined2().as_raw_value().into()
+	SignalKind::user_defined2().as_raw_value()
 }
 
 #[derive(TryFromCaptures)]
