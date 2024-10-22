@@ -1,7 +1,7 @@
 use crate::blocks::{default_alpha, default_period, prelude::*, util};
 use crate::Error;
 use async_stream::stream;
-use futures_util::{Stream, StreamExt};
+use futures_util::Stream;
 use rs_blocks_macros::*;
 use serde::Deserialize;
 
@@ -35,8 +35,8 @@ impl IntoStream for Memory {
 		let re = regex::Regex::new(PATTERN).unwrap();
 		let mut ema = util::Ema::new(self.alpha);
 		stream! {
-			let mut watcher = Box::pin(util::watch(&self.meminfo_path, self.period));
-			while let Some(contents) = watcher.next().await {
+			let watcher = util::watch(&self.meminfo_path, self.period);
+			for await contents in watcher {
 				let stats: MemStats = util::from_string(&re, &contents?, Self::get_name())?;
 				ema.push(stats.percent());
 				yield Ok(format!(" {:.1}%", ema));

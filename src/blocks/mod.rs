@@ -1,6 +1,6 @@
 use crate::Error;
 use async_stream::stream;
-use futures_util::{Stream, StreamExt};
+use futures_util::Stream;
 use serde::Serialize;
 use std::pin::Pin;
 
@@ -72,8 +72,7 @@ pub trait IntoStream {
 		Self: 'static + GetName + IntoSerialized + Sized,
 	{
 		Box::pin(stream! {
-			let mut block_stream = Box::pin(self.into_stream());
-			while let Some(text) = block_stream.next().await {
+			for await text in self.into_stream() {
 				let block_name = Self::get_name().to_string();
 				let json = Self::into_serialized(text?)?;
 				yield Ok(BlockResponse { block_name, json } );

@@ -1,7 +1,7 @@
 use crate::blocks::{default_alpha, default_period, prelude::*, util};
 use crate::Error;
 use async_stream::stream;
-use futures_util::{Stream, StreamExt};
+use futures_util::Stream;
 use rs_blocks_macros::*;
 use serde::Deserialize;
 
@@ -70,8 +70,8 @@ impl IntoStream for Cpu {
 		let mut ema = util::Ema::new(self.alpha);
 		let mut prev = None;
 		stream! {
-			let mut watcher = Box::pin(util::watch(&self.cpu_stat_path, self.period));
-			while let Some(contents) = watcher.next().await {
+			let watcher = util::watch(&self.cpu_stat_path, self.period);
+			for await contents in watcher {
 				let stats: CpuStats = util::from_string(&re, &contents?, Self::get_name())?;
 				if let Some(prev) = prev.replace(stats) {
 					if let Some(percent) = stats.percent(prev) {
