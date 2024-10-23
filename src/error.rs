@@ -19,10 +19,8 @@ pub enum Error {
 	InvalidBlockName(String),
 	#[error(transparent)]
 	Io(#[from] io::Error),
-	#[error("error while parsing '{name}': {reason}")]
-	Parse { name: &'static str, reason: String },
-	#[error("error while parsing '{ty}': {reason}")]
-	Parse2 { ty: &'static str, reason: String },
+	#[error("error while parsing to type '{ty}': {reason}")]
+	Parse { ty: &'static str, reason: String },
 	#[error(transparent)]
 	Serialize(#[from] serde_json::Error),
 	#[error(transparent)]

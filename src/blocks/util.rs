@@ -74,7 +74,7 @@ where
 				current = buf;
 				yield std::str::from_utf8(&current[..n])
 					.map(|x| x.to_owned())
-					.map_err(|e| Error::Parse { name: "a", reason: e.to_string() });
+					.map_err(|e| Error::Parse { ty: "UTF-8 string", reason: e.to_string() });
 			}
 			file.seek(SeekFrom::Start(0)).await?;
 			sleep(Duration::from_millis(millis)).await;
@@ -85,38 +85,38 @@ where
 /// Read to Type
 ///
 /// A convenience function to read a file to a given type `T`.
-pub async fn read_to_ty<P, T>(name: &'static str, path: P) -> Result<T, Error>
+pub async fn read_to_ty<P, T>(path: P) -> Result<T, Error>
 where
 	P: AsRef<Path> + Display,
 	T: FromStr,
+	<T as FromStr>::Err: ToString,
 {
 	let contents = tokio::fs::read_to_string(&path).await?;
-	contents.trim().parse().map_err(|_| Error::Parse {
-		name,
-		reason: format!(
-			"couldn't convert contents of '{path}' to {}",
-			std::any::type_name::<T>()
-		),
-	})
+	contents
+		.trim()
+		.parse()
+		.map_err(|e: <T as FromStr>::Err| Error::Parse {
+			ty: std::any::type_name::<T>(),
+			reason: e.to_string(),
+		})
 }
 
 /// From String
 ///
 /// A convenience function for converting a regex and string into a given type with
 /// relevant error handling.
-pub fn from_string<'a, T>(
-	re: &regex::Regex,
-	contents: &'a str,
-	name: &'static str,
-) -> Result<T, Error>
+pub fn from_string<'a, T>(re: &regex::Regex, contents: &'a str) -> Result<T, Error>
 where
 	T: TryFrom<regex::Captures<'a>, Error = String>,
 {
 	re.captures(contents)
 		.ok_or_else(|| Error::Parse {
-			name,
+			ty: std::any::type_name::<T>(),
 			reason: "regex pattern match failed".to_string(),
 		})
 		.map(|x| x.try_into())?
-		.map_err(|e| Error::Parse { name, reason: e })
+		.map_err(|e| Error::Parse {
+			ty: std::any::type_name::<T>(),
+			reason: e,
+		})
 }

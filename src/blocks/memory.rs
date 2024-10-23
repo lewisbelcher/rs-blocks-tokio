@@ -37,7 +37,7 @@ impl IntoStream for Memory {
 		try_stream! {
 			let watcher = util::watch::<_, 100>(&self.meminfo_path, self.period);
 			for await contents in watcher {
-				let stats: MemStats = util::from_string(&re, &contents?, Self::get_name())?;
+				let stats: MemStats = util::from_string(&re, &contents?)?;
 				ema.push(stats.percent());
 				yield format!(" {:.1}%", ema);
 			}

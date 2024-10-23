@@ -54,8 +54,8 @@ impl TryFrom<(&str, f32)> for Status {
 			"Unknown" => Status::Unknown,
 			e => {
 				return Err(Error::Parse {
-					name: "Battery",
-					reason: format!("Unknown battery status '{e}'"),
+					ty: "Battery Status",
+					reason: format!("unknown status '{e}'"),
 				})
 			}
 		};
@@ -187,16 +187,16 @@ impl IntoStream for Battery {
 		// https://docs.rs/tokio/latest/tokio/runtime/struct.Handle.html#method.block_on
 		// But `futures::executor::block_on` works and executes on the current thread.
 		let max: f32 = {
-			let future = util::read_to_ty("Battery", &self.path_to_charge_full);
+			let future = util::read_to_ty(&self.path_to_charge_full);
 			futures::executor::block_on(future).unwrap()
 		};
 		let mut charge_fraction: f32 = {
-			let future = util::read_to_ty("Battery", &self.path_to_charge_now);
+			let future = util::read_to_ty(&self.path_to_charge_now);
 			let charge: f32 = futures::executor::block_on(future).unwrap();
 			charge / max
 		};
 		let mut status: Status = {
-			let future = util::read_to_ty("Battery", &self.path_to_status);
+			let future = util::read_to_ty(&self.path_to_status);
 			let status_str: String = futures::executor::block_on(future).unwrap();
 			(status_str.as_str(), self.alpha).try_into().unwrap()
 		};
@@ -218,7 +218,7 @@ impl IntoStream for Battery {
 						// in that case
 						let new_charge = new_charge
 							.and_then(|x| x.trim().parse::<f32>()
-								.map_err(|e| Error::Parse { name: Self::get_name(), reason: format!("{} '{x:?}'", e.to_string()) })
+								.map_err(|e| Error::Parse { ty: "f32", reason: e.to_string() })
 							);
 						if let Ok(new_charge) = new_charge {
 							charge_fraction = new_charge / max;

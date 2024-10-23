@@ -72,7 +72,7 @@ impl IntoStream for Cpu {
 		try_stream! {
 			let watcher = util::watch::<_, 100>(&self.cpu_stat_path, self.period);
 			for await contents in watcher {
-				let stats: CpuStats = util::from_string(&re, &contents?, Self::get_name())?;
+				let stats: CpuStats = util::from_string(&re, &contents?)?;
 				if let Some(prev) = prev.replace(stats) {
 					if let Some(percent) = stats.percent(prev) {
 						ema.push(percent);

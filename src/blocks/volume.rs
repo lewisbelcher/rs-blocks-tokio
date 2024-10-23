@@ -59,11 +59,8 @@ impl IntoStream for Volume {
 				let contents = command.output()
 					.await
 					.map(|x| String::from_utf8(x.stdout))?
-					.map_err(|_| Error::Parse {
-						name: Self::get_name(),
-						reason: "couldn't convert stdout to UTF-8 string".to_string()
-					})?;
-				let stats: VolumeStats = util::from_string(&re, &contents, Self::get_name())?;
+					.map_err(|e| Error::Parse { ty: "UTF-8 string", reason: e.to_string() })?;
+				let stats: VolumeStats = util::from_string(&re, &contents)?;
 				yield format!("{}", stats);
 			}
 		}

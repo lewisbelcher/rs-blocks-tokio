@@ -45,12 +45,12 @@ impl IntoStream for Network {
 		let mut tx = NetworkSpeed::new(coef);
 		let mut interval = time::interval(Duration::from_millis(self.period));
 		try_stream! {
-			rx.push(util::read_to_ty(Self::get_name(), &self.path_to_rx).await?);
-			tx.push(util::read_to_ty(Self::get_name(), &self.path_to_tx).await?);
+			rx.push(util::read_to_ty(&self.path_to_rx).await?);
+			tx.push(util::read_to_ty(&self.path_to_tx).await?);
 			loop {
 				interval.tick().await;
-				rx.push(util::read_to_ty(Self::get_name(), &self.path_to_rx).await?);
-				tx.push(util::read_to_ty(Self::get_name(), &self.path_to_tx).await?);
+				rx.push(util::read_to_ty(&self.path_to_rx).await?);
+				tx.push(util::read_to_ty(&self.path_to_tx).await?);
 				yield format!(
 					"<span foreground='#ccffcc'>  {:.1}</span> <span foreground='#ffcccc'>  {:.1}</span>",
 					rx.calc_speed(),
