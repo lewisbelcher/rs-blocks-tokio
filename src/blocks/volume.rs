@@ -63,7 +63,7 @@ impl IntoStream for Volume {
 					.map_err(|_| Error::Parse {
 						name: Self::get_name(),
 						reason: "couldn't convert stdout to UTF-8 string".to_string()
-					})?; // TODO: Yield this and continue retrying? (Same question for other blocks)
+					})?;
 				let stats: VolumeStats = util::from_string(&re, &contents, Self::get_name())?;
 				yield format!("{}", stats);
 			}

@@ -12,28 +12,13 @@ use std::time::Instant;
 #[with_fields(alpha, period)]
 #[derive(Debug, Deserialize, GetName, PangoMarkup, IntoSerialized)]
 pub struct Battery {
-	#[serde(default = "default_path_to_charge_now")]
 	path_to_charge_now: String,
-	#[serde(default = "default_path_to_charge_full")]
 	path_to_charge_full: String,
-	#[serde(default = "default_path_to_status")]
 	path_to_status: String,
 }
 
 fn default_alpha() -> f32 {
-	0.95
-}
-
-fn default_path_to_charge_now() -> String {
-	"/sys/class/power_supply/BAT0/charge_now".to_string()
-}
-
-fn default_path_to_charge_full() -> String {
-	"/sys/class/power_supply/BAT0/charge_full".to_string()
-}
-
-fn default_path_to_status() -> String {
-	"/sys/class/power_supply/BAT0/status".to_string()
+	0.05
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -225,8 +210,7 @@ impl IntoStream for Battery {
 				tokio::select! {
 					Some(new_charge) = charge_watcher.next() => {
 						let elapsed = interval.elapsed();
-						// TODO: we'd rather do this:
-						// let new_charge = new_charge?.trim().parse().map_err(...)?;
+						// We'd rather do this: `let new_charge = new_charge?.trim().parse().map_err(...)?;`
 						// But there appears to be an issue with using `select` nested in `stream`. See
 						// https://github.com/tokio-rs/async-stream/issues/63
 						// We could also drop the extra `if let` below and returning the `new_charge.map(...)`
@@ -245,8 +229,7 @@ impl IntoStream for Battery {
 						new_charge.map(|_| ())
 					},
 					Some(new_status) = status_watcher.next() => {
-						// TODO: we'd rather do this:
-						// status = (new_status?.as_str(), self.alpha).try_into()?;
+						// Again, we'd rather do this: status = (new_status?.as_str(), self.alpha).try_into()?;
 						// But we have the same issues as stated above...
 						let new_status = new_status.and_then(|x| (x.as_str(), self.alpha).try_into());
 						if let Ok(new_status) = new_status {

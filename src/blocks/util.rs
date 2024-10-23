@@ -26,7 +26,7 @@ where
 
 	pub fn push(&mut self, new: T) -> T {
 		let mut current = self.current.unwrap_or(new);
-		current = self.alpha * current + (T::from(1) - self.alpha) * new;
+		current = self.alpha * new + (T::from(1) - self.alpha) * current;
 		self.current = Some(current);
 		current
 	}
@@ -61,7 +61,7 @@ where
 	stream! {
 		let mut current = "".to_string();
 		loop {
-			let new = tokio::fs::read_to_string(path).await.map_err(Error::Io)?; // TODO: optimisation possible?
+			let new = tokio::fs::read_to_string(path).await.map_err(Error::Io)?;
 			if new != current {
 				current = new;
 				yield Ok(current.clone());

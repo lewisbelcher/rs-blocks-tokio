@@ -11,9 +11,7 @@ use tokio::signal::unix::{signal, SignalKind};
 pub struct Brightness {
 	#[serde(default = "default_update_signal")]
 	update_signal: i32,
-	#[serde(default = "default_path_to_current_brightness")]
 	path_to_current_brightness: String,
-	#[serde(default = "default_max_brightness")]
 	max_brightness: u32,
 }
 
@@ -23,14 +21,6 @@ fn default_period() -> u64 {
 
 fn default_update_signal() -> i32 {
 	SignalKind::user_defined1().as_raw_value()
-}
-
-fn default_path_to_current_brightness() -> String {
-	"/sys/class/backlight/intel_backlight/brightness".to_string()
-}
-
-fn default_max_brightness() -> u32 {
-	120000
 }
 
 impl IntoStream for Brightness {
