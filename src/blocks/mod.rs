@@ -1,5 +1,5 @@
 use crate::Error;
-use async_stream::stream;
+use async_stream::try_stream;
 use futures_util::Stream;
 use serde::Serialize;
 use std::pin::Pin;
@@ -57,23 +57,26 @@ pub trait IntoSerialized: GetName + GetMarkup {
 	}
 }
 
-pub struct BlockResponse {
+pub struct BlockResult {
 	pub block_name: String,
-	pub json: String,
+	pub text: String,
 }
 
 pub trait IntoStream {
 	fn into_stream(self) -> impl Stream<Item = Result<String, Error>>;
 
-	fn into_stream_pin(self) -> Pin<Box<dyn Stream<Item = Result<BlockResponse, Error>>>>
+	fn into_stream_pin(self) -> Pin<Box<dyn Stream<Item = Result<BlockResult, Error>>>>
 	where
 		Self: 'static + GetName + IntoSerialized + Sized,
 	{
-		Box::pin(stream! {
-			for await text in self.into_stream() {
+		Box::pin(try_stream! {
+			for await result in self.into_stream() {
 				let block_name = Self::get_name().to_string();
-				let json = Self::into_serialized(text?)?;
-				yield Ok(BlockResponse { block_name, json } );
+				let full_text = match result {
+					Ok(full_text) => full_text,
+					Err(e) => e.to_string(),
+				};
+				yield BlockResult { block_name, text: Self::into_serialized(full_text)? };
 			}
 		})
 	}
@@ -91,7 +94,7 @@ pub enum Block {
 }
 
 impl Block {
-	pub fn into_stream(self) -> Pin<Box<dyn Stream<Item = Result<BlockResponse, Error>>>> {
+	pub fn into_stream_pin(self) -> Pin<Box<dyn Stream<Item = Result<BlockResult, Error>>>> {
 		match self {
 			Block::Battery(x) => x.into_stream_pin(),
 			Block::Brightness(x) => x.into_stream_pin(),

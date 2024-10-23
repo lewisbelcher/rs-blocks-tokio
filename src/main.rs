@@ -27,11 +27,14 @@ async fn main() -> Result<(), error::Error> {
 	// let futures: FuturesUnordered<_> = block_vec
 	let mut futures: SelectAll<_> = block_vec
 		.into_iter()
-		.map(|block| block.into_stream())
+		.map(|block| block.into_stream_pin())
 		.collect();
 	loop {
 		let res = futures.select_next_some().await?;
-		output_map.insert(res.block_name, res.json);
-		println!("{}", serde_json::to_string(&output_map).map_err(Error::Serialize)?);
+		output_map.insert(res.block_name, res.text);
+		println!(
+			"{}",
+			serde_json::to_string(&output_map).map_err(Error::Serialize)?
+		);
 	}
 }

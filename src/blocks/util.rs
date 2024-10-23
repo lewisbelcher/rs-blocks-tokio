@@ -5,6 +5,10 @@ use std::fmt::{self, Display, Formatter};
 use std::ops::{Add, Mul, Sub};
 use std::path::Path;
 use std::str::FromStr;
+use tokio::fs::File;
+use tokio::io::AsyncReadExt;
+use tokio::io::AsyncSeekExt;
+use tokio::io::SeekFrom;
 use tokio::time::{sleep, Duration};
 
 #[derive(PartialEq, Debug, Copy, Clone)]
@@ -52,20 +56,27 @@ where
 	}
 }
 
-pub fn watch<P>(path: P, millis: u64) -> impl Stream<Item = Result<String, Error>>
+pub fn watch<P, const CAPACITY: usize>(
+	path: P,
+	millis: u64,
+) -> impl Stream<Item = Result<String, Error>>
 where
 	P: AsRef<Path> + Copy,
 {
-	// TODO: Implement opening a file and just reading X bytes to prevent the Memory block from
-	// always updating
 	stream! {
-		let mut current = "".to_string();
+		let mut file = File::open(path).await?;
+		let mut buf = [0; CAPACITY];
+		let mut current = [0; CAPACITY];
 		loop {
-			let new = tokio::fs::read_to_string(path).await.map_err(Error::Io)?;
-			if new != current {
-				current = new;
-				yield Ok(current.clone());
+			// TODO: Use this function to read to a given type and drop `read_to_ty`?
+			let n = file.read(&mut buf[..]).await?;
+			if buf != current {
+				current = buf;
+				yield std::str::from_utf8(&current[..n])
+					.map(|x| x.to_owned())
+					.map_err(|e| Error::Parse { name: "a", reason: e.to_string() });
 			}
+			file.seek(SeekFrom::Start(0)).await?;
 			sleep(Duration::from_millis(millis)).await;
 		}
 	}
@@ -79,7 +90,7 @@ where
 	P: AsRef<Path> + Display,
 	T: FromStr,
 {
-	let contents = tokio::fs::read_to_string(&path).await.map_err(Error::Io)?;
+	let contents = tokio::fs::read_to_string(&path).await?;
 	contents.trim().parse().map_err(|_| Error::Parse {
 		name,
 		reason: format!(

@@ -1,7 +1,7 @@
 use crate::blocks::{default_period, prelude::*, util};
 use crate::Error;
 use async_stream::try_stream;
-use futures_util::{Stream, StreamExt};
+use futures_util::{pin_mut, Stream, StreamExt};
 use rs_blocks_macros::*;
 use serde::Deserialize;
 use std::fmt;
@@ -202,8 +202,9 @@ impl IntoStream for Battery {
 		};
 
 		try_stream! {
-			let mut charge_watcher = Box::pin(util::watch(&self.path_to_charge_now, self.period));
-			let mut status_watcher = Box::pin(util::watch(&self.path_to_status, self.period));
+			let charge_watcher = util::watch::<_, 30>(&self.path_to_charge_now, self.period);
+			let status_watcher = util::watch::<_, 30>(&self.path_to_status, self.period);
+			pin_mut!(charge_watcher, status_watcher);
 			let mut prev_charge: Option<f32> = None;
 			let mut interval = Interval::new();
 			loop {

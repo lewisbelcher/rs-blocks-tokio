@@ -58,8 +58,7 @@ impl IntoStream for Volume {
 				let _ = tokio::time::timeout(duration, signal_stream.recv()).await;
 				let contents = command.output()
 					.await
-					.map(|x| String::from_utf8(x.stdout))
-					.map_err(Error::Io)?
+					.map(|x| String::from_utf8(x.stdout))?
 					.map_err(|_| Error::Parse {
 						name: Self::get_name(),
 						reason: "couldn't convert stdout to UTF-8 string".to_string()

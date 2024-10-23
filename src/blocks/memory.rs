@@ -35,7 +35,7 @@ impl IntoStream for Memory {
 		let re = regex::Regex::new(PATTERN).unwrap();
 		let mut ema = util::Ema::new(self.alpha);
 		try_stream! {
-			let watcher = util::watch(&self.meminfo_path, self.period);
+			let watcher = util::watch::<_, 100>(&self.meminfo_path, self.period);
 			for await contents in watcher {
 				let stats: MemStats = util::from_string(&re, &contents?, Self::get_name())?;
 				ema.push(stats.percent());

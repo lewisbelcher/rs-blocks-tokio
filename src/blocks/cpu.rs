@@ -70,7 +70,7 @@ impl IntoStream for Cpu {
 		let mut ema = util::Ema::new(self.alpha);
 		let mut prev = None;
 		try_stream! {
-			let watcher = util::watch(&self.cpu_stat_path, self.period);
+			let watcher = util::watch::<_, 100>(&self.cpu_stat_path, self.period);
 			for await contents in watcher {
 				let stats: CpuStats = util::from_string(&re, &contents?, Self::get_name())?;
 				if let Some(prev) = prev.replace(stats) {
