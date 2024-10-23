@@ -1,6 +1,6 @@
 use crate::blocks::{prelude::*, util};
 use crate::Error;
-use async_stream::stream;
+use async_stream::try_stream;
 use futures_util::Stream;
 use rs_blocks_macros::*;
 use serde::Deserialize;
@@ -52,7 +52,7 @@ impl IntoStream for Volume {
 		let mut command = Command::new(AUDIO_DRIVER_COMMAND);
 		command.args(["--get-mute", "--get-volume"]);
 
-		stream! {
+		try_stream! {
 			loop {
 				// Ignore the Result, it's fine if the timeout elapses
 				let _ = tokio::time::timeout(duration, signal_stream.recv()).await;
@@ -63,9 +63,9 @@ impl IntoStream for Volume {
 					.map_err(|_| Error::Parse {
 						name: Self::get_name(),
 						reason: "couldn't convert stdout to UTF-8 string".to_string()
-					})?;
+					})?; // TODO: Yield this and continue retrying? (Same question for other blocks)
 				let stats: VolumeStats = util::from_string(&re, &contents, Self::get_name())?;
-				yield Ok(format!("{}", stats));
+				yield format!("{}", stats);
 			}
 		}
 	}

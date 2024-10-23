@@ -1,6 +1,6 @@
 use crate::blocks::{prelude::*, util};
 use crate::Error;
-use async_stream::stream;
+use async_stream::try_stream;
 use futures_util::Stream;
 use rs_blocks_macros::*;
 use serde::Deserialize;
@@ -40,12 +40,12 @@ impl IntoStream for Brightness {
 		let duration = std::time::Duration::from_millis(self.period);
 		let max_brightness = self.max_brightness / 100; // Adjust for getting the percentage
 
-		stream! {
+		try_stream! {
 			loop {
 				// Ignore the Result, it's fine if the timeout elapses
 				let _ = tokio::time::timeout(duration, signal_stream.recv()).await;
 				let current: u32 = util::read_to_ty(Self::get_name(), &self.path_to_current_brightness).await?;
-				yield Ok(format!(" {:.0}%", current / max_brightness));
+				yield format!(" {:.0}%", current / max_brightness);
 			}
 		}
 	}

@@ -1,6 +1,6 @@
 use crate::blocks::{default_period, prelude::*, util};
 use crate::Error;
-use async_stream::stream;
+use async_stream::try_stream;
 use futures_util::{Stream, StreamExt};
 use rs_blocks_macros::*;
 use serde::Deserialize;
@@ -216,7 +216,7 @@ impl IntoStream for Battery {
 			(status_str.as_str(), self.alpha).try_into().unwrap()
 		};
 
-		stream! {
+		try_stream! {
 			let mut charge_watcher = Box::pin(util::watch(&self.path_to_charge_now, self.period));
 			let mut status_watcher = Box::pin(util::watch(&self.path_to_status, self.period));
 			let mut prev_charge: Option<f32> = None;
@@ -225,22 +225,41 @@ impl IntoStream for Battery {
 				tokio::select! {
 					Some(new_charge) = charge_watcher.next() => {
 						let elapsed = interval.elapsed();
-						let new_charge = new_charge.unwrap().trim().parse().unwrap(); // TODO
-						charge_fraction = new_charge / max;
-						if let Some(prev_charge) = prev_charge.replace(new_charge) {
-							let rate = (prev_charge - new_charge).abs() / elapsed;
-							status.push(max, new_charge, rate);
+						// TODO: we'd rather do this:
+						// let new_charge = new_charge?.trim().parse().map_err(...)?;
+						// But there appears to be an issue with using `select` nested in `stream`. See
+						// https://github.com/tokio-rs/async-stream/issues/63
+						// We could also drop the extra `if let` below and returning the `new_charge.map(...)`
+						// in that case
+						let new_charge = new_charge
+							.and_then(|x| x.trim().parse::<f32>()
+								.map_err(|e| Error::Parse { name: Self::get_name(), reason: format!("{} '{x:?}'", e.to_string()) })
+							);
+						if let Ok(new_charge) = new_charge {
+							charge_fraction = new_charge / max;
+							if let Some(prev_charge) = prev_charge.replace(new_charge) {
+								let rate = (prev_charge - new_charge).abs() / elapsed;
+								status.push(max, new_charge, rate);
+							}
 						}
+						new_charge.map(|_| ())
 					},
 					Some(new_status) = status_watcher.next() => {
-						status = (new_status.unwrap().as_str(), self.alpha).try_into().unwrap(); // TODO
-						interval = Interval::new();
-						prev_charge = None;
+						// TODO: we'd rather do this:
+						// status = (new_status?.as_str(), self.alpha).try_into()?;
+						// But we have the same issues as stated above...
+						let new_status = new_status.and_then(|x| (x.as_str(), self.alpha).try_into());
+						if let Ok(new_status) = new_status {
+							status = new_status;
+							interval = Interval::new();
+							prev_charge = None;
+						}
+						new_status.map(|_| ())
 					},
-				}
+				}?;
 				let symbol = get_symbol(status, charge_fraction);
 				let percent = 100.0 * charge_fraction;
-				yield Ok(format!("{symbol} {percent:.0}% ({status})"));
+				yield format!("{symbol} {percent:.0}% ({status})");
 			}
 		}
 	}

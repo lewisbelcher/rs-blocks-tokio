@@ -1,6 +1,6 @@
 use crate::blocks::{default_alpha, default_period, prelude::*, util};
 use crate::Error;
-use async_stream::stream;
+use async_stream::try_stream;
 use futures_util::Stream;
 use rs_blocks_macros::*;
 use serde::Deserialize;
@@ -44,18 +44,18 @@ impl IntoStream for Network {
 		let mut rx = NetworkSpeed::new(coef);
 		let mut tx = NetworkSpeed::new(coef);
 		let mut interval = time::interval(Duration::from_millis(self.period));
-		stream! {
+		try_stream! {
 			rx.push(util::read_to_ty(Self::get_name(), &self.path_to_rx).await?);
 			tx.push(util::read_to_ty(Self::get_name(), &self.path_to_tx).await?);
 			loop {
 				interval.tick().await;
 				rx.push(util::read_to_ty(Self::get_name(), &self.path_to_rx).await?);
 				tx.push(util::read_to_ty(Self::get_name(), &self.path_to_tx).await?);
-				yield Ok(format!(
+				yield format!(
 					"<span foreground='#ccffcc'>  {:.1}</span> <span foreground='#ffcccc'>  {:.1}</span>",
 					rx.calc_speed(),
 					tx.calc_speed()
-				));
+				);
 			}
 		}
 	}
