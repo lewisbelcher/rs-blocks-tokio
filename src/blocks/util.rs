@@ -68,7 +68,6 @@ where
 		let mut buf = [0; CAPACITY];
 		let mut current = [0; CAPACITY];
 		loop {
-			// TODO: Use this function to read to a given type and drop `read_to_ty`?
 			let n = file.read(&mut buf[..]).await?;
 			if buf != current {
 				current = buf;
