@@ -1,9 +1,10 @@
-use crate::blocks::{default_alpha, default_period, prelude::*, util};
+use crate::blocks::{default_alpha, default_period, prelude::*, util, StreamExt2};
 use crate::Error;
 use async_stream::try_stream;
 use futures_util::Stream;
 use rs_blocks_macros::*;
 use serde::Deserialize;
+use tokio::time::{sleep, Duration};
 
 const PATTERN: &str = r"(?s)MemTotal:\s+(?<total>\d+).+MemFree:\s+(?<free>\d+)";
 
@@ -35,7 +36,8 @@ impl IntoStream for Memory {
 		let re = regex::Regex::new(PATTERN).unwrap();
 		let mut ema = util::Ema::new(self.alpha);
 		try_stream! {
-			let watcher = util::watch::<_, 100>(&self.meminfo_path, self.period);
+			let watcher = util::watch::<_, 100>(&self.meminfo_path)
+				.with_period(|| sleep(Duration::from_millis(self.period)));
 			for await contents in watcher {
 				let stats: MemStats = util::from_string(&re, &contents?)?;
 				ema.push(stats.percent());

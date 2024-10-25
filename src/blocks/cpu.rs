@@ -1,9 +1,10 @@
-use crate::blocks::{default_alpha, default_period, prelude::*, util};
+use crate::blocks::{default_alpha, default_period, prelude::*, util, StreamExt2};
 use crate::Error;
 use async_stream::try_stream;
 use futures_util::Stream;
 use rs_blocks_macros::*;
 use serde::Deserialize;
+use tokio::time::{sleep, Duration};
 
 const PATTERN: &str = r"(?x)
 cpu\s+
@@ -70,7 +71,8 @@ impl IntoStream for Cpu {
 		let mut ema = util::Ema::new(self.alpha);
 		let mut prev = None;
 		try_stream! {
-			let watcher = util::watch::<_, 100>(&self.cpu_stat_path, self.period);
+			let watcher = util::watch::<_, 100>(&self.cpu_stat_path)
+				.with_period(|| sleep(Duration::from_millis(self.period)));
 			for await contents in watcher {
 				let stats: CpuStats = util::from_string(&re, &contents?)?;
 				if let Some(prev) = prev.replace(stats) {

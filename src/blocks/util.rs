@@ -9,7 +9,6 @@ use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncSeekExt;
 use tokio::io::SeekFrom;
-use tokio::time::{sleep, Duration};
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct Ema<T: PartialEq> {
@@ -56,10 +55,7 @@ where
 	}
 }
 
-pub fn watch<P, const CAPACITY: usize>(
-	path: P,
-	millis: u64,
-) -> impl Stream<Item = Result<String, Error>>
+pub fn watch<P, const CAPACITY: usize>(path: P) -> impl Stream<Item = Result<String, Error>>
 where
 	P: AsRef<Path> + Copy,
 {
@@ -76,7 +72,6 @@ where
 					.map_err(|e| Error::Parse { ty: "UTF-8 string", reason: e.to_string() });
 			}
 			file.seek(SeekFrom::Start(0)).await?;
-			sleep(Duration::from_millis(millis)).await;
 		}
 	}
 }

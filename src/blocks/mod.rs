@@ -9,6 +9,7 @@ pub mod brightness;
 pub mod cpu;
 pub mod memory;
 pub mod network;
+pub mod stream_ext;
 pub mod time;
 pub mod util;
 pub mod volume;
@@ -18,6 +19,7 @@ pub use brightness::Brightness;
 pub use cpu::Cpu;
 pub use memory::Memory;
 pub use network::Network;
+pub use stream_ext::StreamExt2;
 pub use time::Time;
 pub use volume::Volume;
 
