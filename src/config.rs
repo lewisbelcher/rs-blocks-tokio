@@ -27,7 +27,9 @@ fn map_block((name, value): (String, Value)) -> Result<Block, Error> {
 }
 
 pub fn deserialise(string: &str) -> Result<Vec<Block>, Error> {
-	// Why doesn't this work???
+	// TODO: Investigate why deserialising directly into Map<String, Block> doesn't work
+	// With `Deserialize` implemented on `blocks::Block` there's an error about `DeserializeOwned`
+	// not being implemented.
 	// let deserialised: toml::map::Map<String, blocks::Block> = toml::from_str(string).unwrap();
 	let deserialised: toml::map::Map<String, Value> = toml::from_str(string)?;
 	deserialised.into_iter().map(map_block).collect()
