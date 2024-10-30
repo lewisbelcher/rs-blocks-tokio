@@ -35,7 +35,7 @@ impl IntoStream for Brightness {
 				// Ignore the Result, it's fine if the timeout elapses
 				let _ = tokio::time::timeout(duration, signal_stream.recv()).await;
 				let current: u32 = util::read_to_ty(&self.path_to_current_brightness).await?;
-				yield format!(" {:.0}%", current / max_brightness);
+				yield format!("  {:.0}%", current / max_brightness);
 			}
 		}
 	}

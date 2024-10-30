@@ -1,5 +1,6 @@
 use futures_util::{stream::SelectAll, StreamExt};
 use indexmap::IndexMap;
+use itertools::Itertools;
 use std::fs;
 
 pub mod args;
@@ -16,6 +17,11 @@ fn initialise_output_map(block_vec: &[blocks::Block]) -> IndexMap<String, String
 		.collect()
 }
 
+fn print_preamble() {
+	println!("{{\"version\":1,\"click_events\":true}}");
+	println!("[");
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), error::Error> {
 	let args = args::parse_args()?;
@@ -29,12 +35,15 @@ async fn main() -> Result<(), error::Error> {
 		.into_iter()
 		.map(|block| block.into_stream_pin())
 		.collect();
+	print_preamble();
 	loop {
 		let res = futures.select_next_some().await?;
 		output_map.insert(res.block_name, res.text);
-		println!(
-			"{}",
-			serde_json::to_string(&output_map).map_err(Error::Serialize)?
-		);
+		let print: String = output_map
+			.values()
+			.filter_map(|x| if x != "{}" { Some(x.as_str()) } else { None })
+			.intersperse(",")
+			.collect();
+		println!("[{}],", print);
 	}
 }

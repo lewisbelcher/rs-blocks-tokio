@@ -78,7 +78,7 @@ impl IntoStream for Cpu {
 				if let Some(prev) = prev.replace(stats) {
 					if let Some(percent) = stats.percent(prev) {
 						ema.push(percent);
-						yield format!(" {:.1}%", ema);
+						yield format!("  {:.1}%", ema);
 					}
 				}
 			}
